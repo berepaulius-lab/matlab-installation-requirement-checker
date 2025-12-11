@@ -1,13 +1,14 @@
 # One-click Windows 11 Requirement Checker (no MATLAB needed)
 
-Drop this folder on a Windows 11 PC and double-click **run_checker.cmd**. It opens in plain old **Command Prompt**, creates a numbered log text file in the local **logs** folder beside the launcher before anything else, auto-installs PowerShell if it is missing, and then launches the emoji-driven checks (menu and dashboard) with download helpers.
+Drop this folder on a Windows 11 PC and double-click **run_checker.cmd**. It opens in plain old **Command Prompt**, creates a numbered log text file in the local **logs** folder beside the launcher before anything else, tries to auto-install PowerShell if it is missing, and then launches the emoji-driven checks (menu and dashboard) with download helpers. If PowerShell truly cannot be installed, the launcher still runs a **batch-only fallback** so you get basic results and a log instead of a crash.
 
 ## How to run it
 1. Double-click **run_checker.cmd** (or right-click → Run as Administrator if you expect permission prompts).
 - The CMD window shows the exact `log-###.txt` being created under the local `logs` folder *before* PowerShell opens.
    - The launcher first checks basic CMD-side requirements (curl, msiexec, internet ping) and logs any gaps so the session never dies silently.
    - If PowerShell is missing, the launcher tries to download and install it automatically via `curl` + `msiexec` and logs the attempt.
-   - The emoji menu appears; press **A** then Enter to scan everything.
+   - If PowerShell still can’t be installed, a **batch fallback** runs and logs OS/Java/.NET/compiler/disk/memory basics so you can see what works.
+   - When PowerShell is available, the emoji menu appears; press **A** then Enter to scan everything.
    - Press **D** to launch the web dashboard in your browser (served locally).
    - Press **L** to open the log folder or **B** to zip recent logs for support.
 2. Need a silent run? From PowerShell (after the launcher installs it if needed):
