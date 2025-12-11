@@ -6,7 +6,7 @@ Emoji-ready helper that checks MATLAB-related prerequisites using only built-in 
 1) **Slick HTML dashboard (with CSS + buttons)**
    - Double-click `start_dashboard.cmd` (or run `powershell -ExecutionPolicy Bypass -File requirements_dashboard.ps1`).
    - The script now self-checks Windows/PowerShell first; if a permission or port issue appears, it tells you exactly how to fix it.
-   - Your default browser opens a neon-styled dashboard with a Windows badge plus the core MATLAB/Java/.NET/compiler cards. Use **Scan all** or the per-card shortcuts to refresh statuses live.
+   - Your default browser opens a neon-styled dashboard with a Windows badge plus the core MATLAB/Java/.NET/compiler cards **and bonus health checks (internet, disk space, memory)**. Use **Scan all** or the per-card shortcuts to refresh statuses live.
 
 2) **Classic menu / one-shot scan**  
    - Double-click `requirements_checker.cmd` (or right-click `requirements_checker.ps1` → **Run with PowerShell**).  
@@ -31,6 +31,7 @@ powershell -ExecutionPolicy Bypass -File requirements_checker.ps1 -ScanAll
 - Java JDK detection with smart version parsing and install links.
 - .NET runtime detection (needed for MATLAB Compiler SDK .NET assemblies).
 - Supported compiler detection (MSVC `cl`, `gcc`, or `clang`).
+- Bonus health checks: internet reachability, C: drive free space, and available RAM.
 
 ## Cleanup note (less clutter)
 - All legacy MATLAB build helpers now live in `legacy-matlab/` so it’s obvious they’re optional.

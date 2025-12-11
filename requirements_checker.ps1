@@ -53,6 +53,72 @@ function Get-WindowsStatus {
     }
 }
 
+function Get-InternetStatus {
+    $target = 'www.microsoft.com'
+    $reachable = $false
+    try {
+        $reachable = Test-NetConnection -ComputerName $target -InformationLevel Quiet -WarningAction SilentlyContinue
+    } catch {
+        $reachable = $false
+    }
+
+    return [PSCustomObject]@{
+        Label = 'Internet'
+        Emoji = if ($reachable) { '✅' } else { '⚠️' }
+        Value = if ($reachable) { "Online (reachable $target)" } else { "Offline (can't reach $target)" }
+        Color = if ($reachable) { [ConsoleColor]::Green } else { [ConsoleColor]::Yellow }
+        NeedsDownload = $false
+    }
+}
+
+function Get-DiskStatus {
+    try {
+        $drive = Get-PSDrive -Name C -ErrorAction Stop
+        $freeGb = [math]::Round($drive.Free / 1GB, 1)
+        $totalGb = [math]::Round($drive.Used / 1GB + $drive.Free / 1GB, 1)
+        $healthy = $freeGb -ge 10
+        return [PSCustomObject]@{
+            Label = 'System Disk'
+            Emoji = if ($healthy) { '✅' } else { '⚠️' }
+            Value = "C: $freeGb GB free of $totalGb GB"
+            Color = if ($healthy) { [ConsoleColor]::Green } else { [ConsoleColor]::Yellow }
+            NeedsDownload = $false
+        }
+    } catch {
+        return [PSCustomObject]@{
+            Label = 'System Disk'
+            Emoji = '⚠️'
+            Value = 'Unable to read disk info'
+            Color = [ConsoleColor]::Yellow
+            NeedsDownload = $false
+        }
+    }
+}
+
+function Get-MemoryStatus {
+    try {
+        $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
+        $totalGb = [math]::Round($os.TotalVisibleMemorySize / 1MB, 1)
+        $freeGb = [math]::Round($os.FreePhysicalMemory / 1MB, 1)
+        $healthy = $totalGb -ge 8
+        return [PSCustomObject]@{
+            Label = 'Memory'
+            Emoji = if ($healthy) { '✅' } else { '⚠️' }
+            Value = "$freeGb GB free of $totalGb GB RAM"
+            Color = if ($healthy) { [ConsoleColor]::Green } else { [ConsoleColor]::Yellow }
+            NeedsDownload = $false
+        }
+    } catch {
+        return [PSCustomObject]@{
+            Label = 'Memory'
+            Emoji = '⚠️'
+            Value = 'Unable to read RAM info'
+            Color = [ConsoleColor]::Yellow
+            NeedsDownload = $false
+        }
+    }
+}
+
 function Write-Header {
     param([string]$Title)
     Write-Host "==============================" -ForegroundColor DarkCyan
@@ -232,6 +298,9 @@ function Show-Checks {
     Write-Host "  [2] Java JDK" -ForegroundColor Gray
     Write-Host "  [3] .NET" -ForegroundColor Gray
     Write-Host "  [4] C/C++ compiler" -ForegroundColor Gray
+    Write-Host "  [5] Bonus: Internet" -ForegroundColor DarkCyan
+    Write-Host "  [6] Bonus: Disk space" -ForegroundColor DarkCyan
+    Write-Host "  [7] Bonus: Memory" -ForegroundColor DarkCyan
     Write-Host "  [Q] Quit" -ForegroundColor DarkGray
     Write-Host ""
     $choice = Read-Host "Enter choice (default A)"
@@ -243,6 +312,9 @@ function Show-Checks {
         '2' { Show-Result (Get-JavaStatus) }
         '3' { Show-Result (Get-DotNetStatus) }
         '4' { Show-Result (Get-CompilerStatus) }
+        '5' { Show-Result (Get-InternetStatus) }
+        '6' { Show-Result (Get-DiskStatus) }
+        '7' { Show-Result (Get-MemoryStatus) }
         'Q' { return }
         Default {
             Write-Host "Unknown choice. Please try again." -ForegroundColor Yellow
@@ -271,6 +343,9 @@ function Run-AllChecks {
     Show-Result (Get-JavaStatus)
     Show-Result (Get-DotNetStatus)
     Show-Result (Get-CompilerStatus)
+    Show-Result (Get-InternetStatus)
+    Show-Result (Get-DiskStatus)
+    Show-Result (Get-MemoryStatus)
 }
 
 function Get-AllStatuses {
@@ -280,6 +355,9 @@ function Get-AllStatuses {
         Get-JavaStatus
         Get-DotNetStatus
         Get-CompilerStatus
+        Get-InternetStatus
+        Get-DiskStatus
+        Get-MemoryStatus
     )
 }
 

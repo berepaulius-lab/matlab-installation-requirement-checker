@@ -3,12 +3,12 @@ QUICK STEPS (Windows 11, no MATLAB required)
 
 1) Pick your checker
    - Double-click start_dashboard.cmd for the CSS-styled browser dashboard (it will verify Windows/PowerShell first), OR
-   - Double-click requirements_checker.cmd for the classic menu, OR
+   - Double-click requirements_checker.cmd for the classic menu (now with bonus internet/disk/memory checks), OR
    - Right-click either .ps1 and choose "Run with PowerShell"
 
 2) Scan everything
    - Dashboard: click "Scan all" (per-card buttons update instantly, and a Windows badge shows your edition/build)
-   - Menu: press A then Enter
+   - Menu: press A then Enter (or run the bonus checks individually via options 5-7)
    - Missing items offer to open the official download page
 
 3) Silent mode (optional)

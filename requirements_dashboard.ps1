@@ -1,4 +1,4 @@
-<#!
+<#
 .SYNOPSIS
     Launches a local HTML dashboard with CSS-styled cards and buttons to run requirement checks.
 
@@ -6,7 +6,7 @@
     Uses only built-in Windows 11 PowerShell/.NET to host a lightweight HTTP listener on localhost
     and serve a modern-looking dashboard. Buttons trigger the same checks as requirements_checker.ps1
     and instantly update the emoji status cards. No MATLAB or extra dependencies required.
-!>
+#>
 
 param(
     [int]$Port = 5133
