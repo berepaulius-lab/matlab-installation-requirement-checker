@@ -3,9 +3,10 @@
 Drop this folder on a Windows 11 PC and double-click **run_checker.cmd**. The script instantly creates a fresh log file under `logs/`, checks your setup, offers to fix missing pieces with winget when available, and can launch the flashy web dashboard with one key.
 
 ## How to run it
-1) Double-click **run_checker.cmd** (or right-click → Run as Administrator if you expect permission prompts).  
-   - The menu appears with emojis. Press **A** then Enter to scan everything.  
-   - Press **D** to launch the web dashboard in your browser (served locally).  
+1) Double-click **run_checker.cmd** (or right-click → Run as Administrator if you expect permission prompts).
+   - It immediately creates a fresh log file in `logs/` and tells you where to find it before continuing.
+   - The menu appears with emojis. Press **A** then Enter to scan everything.
+   - Press **D** to launch the web dashboard in your browser (served locally).
    - Press **L** to open the log folder or **B** to zip recent logs for support.
 2) Need a silent run? From PowerShell:  
    `powershell -ExecutionPolicy Bypass -File requirements_checker.ps1 -ScanAll -LogPath .\logs`

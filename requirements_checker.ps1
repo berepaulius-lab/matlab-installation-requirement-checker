@@ -12,7 +12,8 @@ param(
 $latestMatlabRelease = 'R2024b'
 $minPowershell = [version]'5.1'
 $script:LogDirectory = if ($LogPath) { $LogPath } else { Join-Path $PSScriptRoot 'logs' }
-$script:LogFile = if ($LogFile) { $LogFile } else { Join-Path $script:LogDirectory "checker-$(Get-Date -Format 'yyyyMMdd-HHmmss').log" }
+$script:LogFile = if ($LogFile) { $LogFile } else { Join-Path $script:LogDirectory ("checker-{0}.log" -f (Get-Date -Format 'yyyyMMdd-HHmmss')) }
+$script:TranscriptStarted = $false
 
 function Initialize-Log {
     try {
@@ -39,9 +40,34 @@ function Write-Log {
     }
 }
 
+function Start-TranscriptSafe {
+    try {
+        Start-Transcript -Path $script:LogFile -Append -ErrorAction Stop | Out-Null
+        $script:TranscriptStarted = $true
+    } catch {
+        Write-Warning "Transcript could not start: $($_.Exception.Message)"
+        Write-Log -Message "Transcript start failed: $($_.Exception.Message)" -Level 'WARN'
+    }
+}
+
+function Confirm-Logging {
+    if ($Quiet -or $Dashboard) { return $true }
+    Write-Host "Logging everything to:`n  $script:LogFile" -ForegroundColor Cyan
+    Write-Host "A logs folder lives next to this script. Send the latest file to support if something looks off." -ForegroundColor DarkGray
+    $response = Read-Host "Start logging now? (Y/n)"
+    if ($response -and $response.Trim().ToUpper() -eq 'N') {
+        Write-Log -Message "User aborted before checks" -Level 'WARN'
+        if ($script:TranscriptStarted) { try { Stop-Transcript | Out-Null } catch { } }
+        return $false
+    }
+    return $true
+}
+
 Initialize-Log
+Start-TranscriptSafe
 Write-Log -Message "Arguments: ScanAll=$ScanAll Quiet=$Quiet LogPath=$LogPath"
 Write-Log -Message "Logs will be written to $script:LogFile"
+if (-not (Confirm-Logging)) { return }
 
 function Parse-Version {
     param([string]$Raw)
@@ -1022,21 +1048,33 @@ function Get-AllStatuses {
 }
 
 # Skip interactive entry when dot-sourced for reuse by other scripts
-if ($Dashboard) {
-    try { Start-Dashboard -Port $Port } catch { Write-Host "❌ $($_.Exception.Message)" -ForegroundColor Red; Write-Log -Messag
-e "Dashboard failed: $($_.Exception.Message)" -Level 'ERROR'; exit 1 }
-    exit 0
-}
-
-if ($MyInvocation.InvocationName -ne '.') {
-    if ($ScanAll) {
-        Run-AllChecks
-        if (-not $Quiet) {
-            Write-Host ""
-            Write-Host "Done." -ForegroundColor Green
+try {
+    if ($Dashboard) {
+        try {
+            Start-Dashboard -Port $Port
+        } catch {
+            Write-Host "❌ $($_.Exception.Message)" -ForegroundColor Red
+            Write-Log -Message "Dashboard failed: $($_.Exception.Message)" -Level 'ERROR'
+            return
         }
-        exit 0
+        return
     }
 
-    Show-Checks
+    if ($MyInvocation.InvocationName -ne '.') {
+        if ($ScanAll) {
+            Run-AllChecks
+            if (-not $Quiet) {
+                Write-Host ""
+                Write-Host "Done." -ForegroundColor Green
+            }
+            return
+        }
+
+        Show-Checks
+    }
+}
+finally {
+    if ($script:TranscriptStarted) {
+        try { Stop-Transcript | Out-Null } catch { }
+    }
 }
