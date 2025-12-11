@@ -5,6 +5,7 @@ Drop this folder on a Windows 11 PC and double-click **run_checker.cmd**. It ope
 ## How to run it
 1. Double-click **run_checker.cmd** (or right-click → Run as Administrator if you expect permission prompts).
    - The CMD window shows the exact `log-###.txt` being created under `%USERPROFILE%\Logs\MatlabRequirementChecker` *before* PowerShell opens.
+   - The launcher first checks basic CMD-side requirements (curl, msiexec, internet ping) and logs any gaps so the session never dies silently.
    - If PowerShell is missing, the launcher tries to download and install it automatically via `curl` + `msiexec` and logs the attempt.
    - The emoji menu appears; press **A** then Enter to scan everything.
    - Press **D** to launch the web dashboard in your browser (served locally).
