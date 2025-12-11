@@ -38,10 +38,15 @@ function ensureLogFile(logPathArg) {
       : '001';
     logPath = path.join(LOG_DIR, `log-${next}.txt`);
   }
+
+  const existed = fs.existsSync(logPath) && fs.statSync(logPath).size > 0;
   if (!fs.existsSync(logPath)) {
     fs.writeFileSync(logPath, '', 'utf8');
   }
-  const header = `[INFO] Starting log in: ${logPath}\n(Everything printed to the screen will also be copied here.)`;
+
+  const header = existed
+    ? `[INFO] Continuing log: ${logPath}`
+    : `[INFO] Starting log in: ${logPath}\n(Everything printed to the screen will also be copied here.)`;
   fs.appendFileSync(logPath, header + os.EOL);
   console.log(header);
   return logPath;
@@ -187,25 +192,10 @@ function formatResult(r) {
   return `${icon} ${r.label}: ${r.detail}`;
 }
 
-function promptContinue(message) {
-  return new Promise((resolve) => {
-    const rl = require('readline').createInterface({ input: process.stdin, output: process.stdout });
-    rl.question(message, (answer) => {
-      rl.close();
-      resolve(!(answer && answer.toLowerCase().startsWith('n')));
-    });
-  });
-}
-
 async function main() {
   const args = parseArgs();
   LOG_FILE = ensureLogFile(args.logPath);
   log('[INFO] Log will capture all output.');
-  const cont = await promptContinue('Continue with checks? (Y/n): ');
-  if (!cont) {
-    log('[INFO] Exiting before checks (per user choice).');
-    return;
-  }
 
   const checks = [checkOS, checkInternet, checkJava, checkDotNet, checkCompilers, checkDisk, checkMemory];
   log('[INFO] Running checks...');

@@ -9,7 +9,8 @@ $items = @(
     'build_exe.cmd',
     'package.json',
     'README.md',
-    'logs'
+    'logs',
+    'runtime'
 ) | Where-Object { Test-Path $_ }
 
 if ($items.Count -eq 0) {
