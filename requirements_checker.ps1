@@ -11,16 +11,37 @@ param(
 
 $latestMatlabRelease = 'R2024b'
 $minPowershell = [version]'5.1'
-$script:LogDirectory = if ($LogPath) { $LogPath } else { Join-Path $PSScriptRoot 'logs' }
-$script:LogFile = if ($LogFile) { $LogFile } else { Join-Path $script:LogDirectory ("checker-{0}.log" -f (Get-Date -Format 'yyyyMMdd-HHmmss')) }
+$defaultLogRoot = if ($env:USERPROFILE) { Join-Path $env:USERPROFILE 'Logs\MatlabRequirementChecker' } else { Join-Path $PSScriptRoot 'logs' }
+$script:LogDirectory = if ($LogPath) { $LogPath } else { $defaultLogRoot }
+$script:LogFile = $LogFile
 $script:TranscriptStarted = $false
 
 function Initialize-Log {
     try {
-        $script:LogDirectory = if ($script:LogFile) { Split-Path -Path $script:LogFile -Parent } else { $script:LogDirectory }
+        if (-not $script:LogDirectory) {
+            $script:LogDirectory = $defaultLogRoot
+        }
         if (-not (Test-Path $script:LogDirectory)) {
             New-Item -ItemType Directory -Path $script:LogDirectory -Force | Out-Null
         }
+
+        if (-not $script:LogFile) {
+            $existing = Get-ChildItem -Path $script:LogDirectory -Filter 'log-*.txt' -ErrorAction SilentlyContinue
+            $numbers = @()
+            foreach ($item in $existing) {
+                if ($item.BaseName -match 'log-(\d+)') {
+                    $numbers += [int]$Matches[1]
+                }
+            }
+            $next = if ($numbers.Count -gt 0) { ($numbers | Measure-Object -Maximum).Maximum + 1 } else { 1 }
+            $script:LogFile = Join-Path $script:LogDirectory ("log-{0:D3}.txt" -f $next)
+        } else {
+            $script:LogDirectory = Split-Path -Path $script:LogFile -Parent
+            if (-not (Test-Path $script:LogDirectory)) {
+                New-Item -ItemType Directory -Path $script:LogDirectory -Force | Out-Null
+            }
+        }
+
         "[INFO] $(Get-Date -Format o) :: Session started" | Out-File -FilePath $script:LogFile -Encoding UTF8 -Force
     } catch {
         Write-Warning "Could not initialize log folder at $script:LogDirectory: $($_.Exception.Message)"
@@ -53,7 +74,7 @@ function Start-TranscriptSafe {
 function Confirm-Logging {
     if ($Quiet -or $Dashboard) { return $true }
     Write-Host "Logging everything to:`n  $script:LogFile" -ForegroundColor Cyan
-    Write-Host "A logs folder lives next to this script. Send the latest file to support if something looks off." -ForegroundColor DarkGray
+    Write-Host "A per-user log folder lives at $script:LogDirectory. Send the newest log-###.txt if something looks off." -ForegroundColor DarkGray
     $response = Read-Host "Start logging now? (Y/n)"
     if ($response -and $response.Trim().ToUpper() -eq 'N') {
         Write-Log -Message "User aborted before checks" -Level 'WARN'
@@ -799,7 +820,7 @@ function Start-Dashboard {
         <div class="pill">Not yet scanned</div>
       </div>
     </div>
-    <div class="footer">Uses built-in Windows tools only. Logs live in the \"logs\" folder next to this script.</div>
+    <div class="footer">Uses built-in Windows tools only. Logs live in %USERPROFILE%\\Logs\\MatlabRequirementChecker.</div>
   </div>
   <script>
     const map = {
@@ -940,7 +961,7 @@ function Save-SupportBundle {
     try {
         if (-not (Test-Path $script:LogDirectory)) { New-Item -ItemType Directory -Path $script:LogDirectory -Force | Out-Null }
         $bundle = Join-Path $script:LogDirectory "checker-support-$(Get-Date -Format 'yyyyMMdd-HHmmss').zip"
-        $logFiles = Get-ChildItem $script:LogDirectory -Filter '*.log' -ErrorAction SilentlyContinue
+        $logFiles = Get-ChildItem $script:LogDirectory -Filter '*.txt' -ErrorAction SilentlyContinue
         if (-not $logFiles) {
             Write-Host "No logs yet. Run a scan first." -ForegroundColor Yellow
             Write-Log -Message "Support bundle skipped: no logs" -Level 'WARN'

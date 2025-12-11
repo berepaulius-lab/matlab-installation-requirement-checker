@@ -1,14 +1,23 @@
 @echo off
 setlocal ENABLEDELAYEDEXPANSION
 set "SCRIPT_DIR=%~dp0"
-set "LOG_DIR=%SCRIPT_DIR%logs"
+set "LOG_DIR=%USERPROFILE%\Logs\MatlabRequirementChecker"
 
-rem Ensure logs exist and build a safe timestamp
+rem Ensure the per-user log folder exists
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
-for /f "tokens=1-4 delims=/ " %%a in ("%date%") do set "YY=%%d"& set "MM=%%b"& set "DD=%%c"
-for /f "tokens=1-3 delims=:.," %%a in ("%time%") do set "HH=%%a"& set "MN=%%b"& set "SS=%%c"
-set "HH=0%HH%"& set "HH=!HH:~-2!"
-set "LOG_FILE=%LOG_DIR%\checker-!YY!!MM!!DD!-!HH!!MN!!SS!.log"
+
+rem Pick the next numeric log file (log-001.txt, log-002.txt, ...)
+set "LOG_PREFIX=log-"
+set "LOG_EXT=.txt"
+set "LOG_INDEX=1"
+for /f "tokens=*" %%f in ('dir /b /a-d "%LOG_DIR%\%LOG_PREFIX%*%LOG_EXT%" ^| sort') do (
+  set "NAME=%%~nf"
+  set "NUM=!NAME:%LOG_PREFIX%=!"
+  for /f "delims=" %%n in ("!NUM!") do 2>nul set /a "LOG_INDEX=%%n+1"
+)
+set "PAD=00!LOG_INDEX!"
+set "PAD=!PAD:~-3!"
+set "LOG_FILE=%LOG_DIR%\%LOG_PREFIX%!PAD!%LOG_EXT%"
 
 echo [INFO] Starting log in: %LOG_FILE%>"%LOG_FILE%"
 echo (Everything printed to the screen will also be copied here.)>>"%LOG_FILE%"
