@@ -1,0 +1,21 @@
+WELCOME! 👋
+
+This folder contains the MATLAB Requirements Checker.
+
+How to run (no MATLAB needed):
+1) Double-click `requirements_checker` (Windows: `requirements_checker.exe`).
+2) If prompted, install the free MATLAB Runtime.
+3) In the app, click **Scan All** or use the per-item **Scan** buttons to refresh results.
+
+How to run with MATLAB instead:
+1) Open MATLAB and add this folder to your path.
+2) Run `requirements_checker_ui` or `launch_requirements_checker` for the UI.
+3) Run `quick_requirements_check` for a console-only summary.
+
+What you will see:
+- Emoji status for MATLAB release, Java JDK, .NET runtime, and compiler detection.
+- Helpful notes about product-specific needs and hardware setup.
+
+Need help?
+- If a check shows ⚠️ or ❌, ensure the related tools (java/javac/dotnet) are on your PATH, then click Scan again.
+- Re-run the app after updating MATLAB to refresh the latest info.
