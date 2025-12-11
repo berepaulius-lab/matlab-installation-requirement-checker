@@ -4,6 +4,7 @@ set "SCRIPT_DIR=%~dp0"
 set "LOG_DIR=%SCRIPT_DIR%logs"
 set "RUNTIME_DIR=%SCRIPT_DIR%runtime"
 set "SPIN_FLAG=%TEMP%\checker_spin.flag"
+set "AUTO_FLAG=--auto"
 for /f %%b in ('"prompt $H & for %%b in (1) do rem"') do set "bs=%%b"
 
 if "%~1"==":spinner" goto spinner
@@ -34,14 +35,14 @@ call :ensure_exe
 
 if exist "%SCRIPT_DIR%checker.exe" (
   call :log "[INFO] Running bundled checker.exe..."
-  "%SCRIPT_DIR%checker.exe" --log-path "%LOG_FILE%"
+  "%SCRIPT_DIR%checker.exe" --log-path "%LOG_FILE%" %AUTO_FLAG%
   goto :end
 )
 
 call :ensure_node
 if defined NODE_CMD (
   call :log "[INFO] Using Node runtime: %NODE_CMD%"
-  "%NODE_CMD%" "%SCRIPT_DIR%checker.js" --log-path "%LOG_FILE%"
+  "%NODE_CMD%" "%SCRIPT_DIR%checker.js" --log-path "%LOG_FILE%" %AUTO_FLAG%
   goto :end
 )
 
@@ -59,13 +60,13 @@ if exist "%SPIN_FLAG%" del "%SPIN_FLAG%" >nul 2>&1
 >"%SPIN_FLAG%" echo on
 set "SPIN_MSG=%~1"
 if not defined SPIN_MSG set "SPIN_MSG=Working..."
-echo %SPIN_MSG%
-rem Quote the self-invocation so the :spinner label is respected and output stays in this window
-start "spinner" /b cmd /c ""%~f0" :spinner "%SPIN_FLAG%""
+rem Keep the spinner in the same window; use CALL so the label is honored
+start "" /b cmd /c "call ""%~f0"" :spinner "%SPIN_FLAG%" "%SPIN_MSG%""
 goto :eof
 
 :stop_spinner
 if exist "%SPIN_FLAG%" del "%SPIN_FLAG%" >nul 2>&1
+echo.
 goto :eof
 
 :ensure_exe
@@ -87,7 +88,9 @@ if errorlevel 1 (
 pushd "%SCRIPT_DIR%"
 if not exist node_modules (
   call :log "[INFO] Installing npm dependencies (one-time)..."
+  call :start_spinner "Installing npm dependencies..."
   npm install --no-audit --no-fund >nul 2>&1
+  call :stop_spinner
   if errorlevel 1 (
     call :log "[WARN] npm install failed; cannot auto-build checker.exe."
     popd
@@ -184,6 +187,9 @@ exit /b %BUILD_EXIT%
 :spinner
 setlocal ENABLEDELAYEDEXPANSION
 set "FLAG=%~1"
+set "MESSAGE=%~2"
+if not defined MESSAGE set "MESSAGE=Working..."
+<nul set /p "=%MESSAGE% "
 set "CHARS=|/-\\"
 :spin_loop
 if not exist "%FLAG%" exit /b 0

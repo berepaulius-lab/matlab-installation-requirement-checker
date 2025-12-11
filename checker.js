@@ -14,6 +14,7 @@ const readline = require('readline');
 
 const SCRIPT_DIR = __dirname;
 const LOG_DIR = path.join(SCRIPT_DIR, 'logs');
+let AUTO_YES = false;
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -22,6 +23,8 @@ function parseArgs() {
     if (args[i] === '--log-path' && args[i + 1]) {
       out.logPath = args[i + 1];
       i++;
+    } else if (args[i] === '--auto' || args[i] === '--yes' || args[i] === '-y') {
+      out.autoYes = true;
     }
   }
   return out;
@@ -75,6 +78,10 @@ function run(cmd, args, options = {}) {
 }
 
 function promptYesNo(question, defaultYes = true) {
+  if (AUTO_YES) {
+    log(`[INFO] Auto mode: defaulting to "yes" for: ${question}`);
+    return Promise.resolve(true);
+  }
   return new Promise((resolve) => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     const suffix = defaultYes ? ' [Y/n] ' : ' [y/N] ';
@@ -285,6 +292,7 @@ function formatResult(r) {
 
 async function main() {
   const args = parseArgs();
+  AUTO_YES = Boolean(args.autoYes);
   LOG_FILE = ensureLogFile(args.logPath);
   log('[INFO] Log will capture all output.');
 
