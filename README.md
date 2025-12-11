@@ -1,14 +1,15 @@
 # One-click Windows 11 Requirement Checker (no MATLAB needed)
 
-Drop this folder on a Windows 11 PC and double-click **run_checker.cmd**. The script instantly creates a fresh log file under `logs/`, checks your setup, offers to fix missing pieces with winget when available, and can launch the flashy web dashboard with one key.
+Drop this folder on a Windows 11 PC and double-click **run_checker.cmd**. It starts in plain old **Command Prompt**, spins up a log file immediately, auto-installs PowerShell if it is missing, and then launches the menu/dashboard checks with emojis and download helpers.
 
 ## How to run it
 1) Double-click **run_checker.cmd** (or right-click → Run as Administrator if you expect permission prompts).
-   - It immediately creates a fresh log file in `logs/` and tells you where to find it before continuing.
-   - The menu appears with emojis. Press **A** then Enter to scan everything.
+   - The CMD window shows where the log file is being created *before* PowerShell opens.
+   - If PowerShell is missing, the launcher tries to download and install it automatically via `curl` + `msiexec` and logs the attempt.
+   - The emoji menu appears; press **A** then Enter to scan everything.
    - Press **D** to launch the web dashboard in your browser (served locally).
    - Press **L** to open the log folder or **B** to zip recent logs for support.
-2) Need a silent run? From PowerShell:  
+2) Need a silent run? From PowerShell (after the launcher installs it if needed):
    `powershell -ExecutionPolicy Bypass -File requirements_checker.ps1 -ScanAll -LogPath .\logs`
 
 ## What it checks (and can auto-fix)
@@ -29,6 +30,6 @@ Drop this folder on a Windows 11 PC and double-click **run_checker.cmd**. The sc
 3. Share the generated `requirements-checker-windows.zip` (it includes the launcher, script, docs, and an empty `logs` folder).
 
 ## Troubleshooting
-- **PowerShell missing?** The launcher tells you where to download it. Install, then rerun the launcher.
+- **PowerShell missing?** The launcher first tries to download/install it automatically; if it cannot, it prints the official link and logs the failure.
 - **Dashboard port busy?** Run `run_checker.cmd` and press **D**, or from PowerShell: `powershell -File requirements_checker.ps1 -Dashboard -Port 0` to auto-pick a free port.
 - **Winget blocked?** The script falls back to opening the official download pages so you can install manually.
