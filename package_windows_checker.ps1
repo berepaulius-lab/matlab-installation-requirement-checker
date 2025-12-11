@@ -3,8 +3,11 @@ param(
 )
 
 $items = @(
-    'requirements_checker.ps1',
     'run_checker.cmd',
+    'checker.js',
+    'checker.exe',
+    'build_exe.cmd',
+    'package.json',
     'README.md',
     'logs'
 ) | Where-Object { Test-Path $_ }

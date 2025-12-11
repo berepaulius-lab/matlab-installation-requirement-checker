@@ -1,38 +1,36 @@
-# One-click Windows 11 Requirement Checker (no MATLAB needed)
+# Windows Requirement Checker (Node/EXE, no MATLAB needed)
 
-Drop this folder on a Windows 11 PC and double-click **run_checker.cmd**. It opens in plain old **Command Prompt**, creates a numbered log text file in the local **logs** folder beside the launcher before anything else, tries to auto-install PowerShell if it is missing, and then launches the emoji-driven checks (menu and dashboard) with download helpers. If PowerShell truly cannot be installed, the launcher still runs a **batch-only fallback** so you get basic results and a log instead of a crash.
+Double-click **run_checker.cmd** in Command Prompt. It immediately creates a numbered log text file in the local **logs** folder beside the launcher, then prefers a bundled **checker.exe** (or `node checker.js`) for the richer checks. If neither is available, a minimal batch-only fallback still runs and logs OS/Java/.NET/compiler basics.
 
-## How to run it
-1. Double-click **run_checker.cmd** (or right-click → Run as Administrator if you expect permission prompts).
-- The CMD window shows the exact `log-###.txt` being created under the local `logs` folder *before* PowerShell opens.
-   - The launcher first checks basic CMD-side requirements (curl, msiexec, internet ping) and logs any gaps so the session never dies silently.
-   - If PowerShell is missing, the launcher tries to download and install it automatically via `curl` + `msiexec` and logs the attempt.
-   - If PowerShell still can’t be installed, a **batch fallback** runs and logs OS/Java/.NET/compiler/disk/memory basics so you can see what works.
-   - When PowerShell is available, the emoji menu appears; press **A** then Enter to scan everything.
-   - Press **D** to launch the web dashboard in your browser (served locally).
-   - Press **L** to open the log folder or **B** to zip recent logs for support.
-2. Need a silent run? From PowerShell (after the launcher installs it if needed):
-   `powershell -ExecutionPolicy Bypass -File requirements_checker.ps1 -ScanAll`
+## One-click flow
+1. Double-click **run_checker.cmd** (plain CMD).
+2. Watch the log path print (for example `logs/log-003.txt`). Everything shown on screen is mirrored there.
+3. If `checker.exe` exists, it launches automatically. If not, the script uses `node checker.js`. If Node.js is missing too, a basic batch scan runs so you still get results and a log.
 
-## What it checks (and can auto-fix)
-- Windows edition/build/architecture and PowerShell version (links to upgrade if outdated).
-- winget readiness plus Windows Update service health (for smooth installs).
-- MATLAB on PATH (no MATLAB runtime required to run this app).
-- Java JDK, .NET runtime, and C/C++ compilers (`cl`, `gcc`, `clang`). Missing items attempt silent **winget** install first, then open the official download page.
-- Bonus health: internet reachability, C: drive space, and available RAM.
+## What it checks (Node/EXE path)
+- Windows version and architecture.
+- Internet reachability to neutral hosts (no Microsoft sign-in needed).
+- Java JDK, .NET, and C/C++ compiler presence.
+- Disk free space on C: and available memory.
 
-## Logs first, always
-- A local `logs` folder next to the launcher receives a numbered `log-###.txt` **before** any checks run.
-- The dashboard and the menu share the same log folder and log file (passed from the launcher).
-- Use **L** in the menu to jump to the folder, or **B** to package recent logs into a ZIP for sharing.
-- No Microsoft account required—downloads use public links and the connectivity probe targets neutral hosts.
+## Build a standalone EXE (optional, Windows)
+1. Install Node.js 18+ on your PC.
+2. Open Command Prompt in this folder.
+3. Run `build_exe.cmd` (it installs `pkg` locally if needed and outputs **checker.exe**).
+4. Share the folder or zip it—**run_checker.cmd** will pick up the EXE automatically.
 
-## Packaging a “download me” zip on Windows
-1. Open PowerShell in this folder.
-2. Run `./package_windows_checker.ps1`.
-3. Share the generated `requirements-checker-windows.zip` (it includes the launcher, script, and this README).
+## Logs (easy to find)
+- Every run starts by creating `logs/log-###.txt` beside the launcher.
+- All console text is copied into that log. Open it with Notepad if something fails.
 
-## Troubleshooting
-- **PowerShell missing?** The launcher first tries to download/install it automatically; if it cannot, it prints the official link and logs the failure.
-- **Dashboard port busy?** Run `run_checker.cmd` and press **D**, or from PowerShell: `powershell -File requirements_checker.ps1 -Dashboard -Port 0` to auto-pick a free port.
-- **Winget blocked?** The script falls back to opening the official download pages so you can install manually.
+## Batch-only fallback
+If both `checker.exe` and Node.js are missing, **run_checker.cmd** still logs and reports:
+- OS version, Java presence, .NET presence, compiler presence, basic disk/RAM details.
+
+## Files
+- `run_checker.cmd` – the one-click launcher that creates logs and chooses the best available checker.
+- `checker.js` – Node-based checker (can be packaged to EXE).
+- `checker.exe` – optional built EXE (generated by `build_exe.cmd`).
+- `logs/` – ready-made folder where log files are created.
+- `build_exe.cmd` – helper to produce `checker.exe` using `pkg`.
+- `package.json` – Node metadata for the build.
