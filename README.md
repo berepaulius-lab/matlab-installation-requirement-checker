@@ -3,9 +3,10 @@
 Emoji-ready helper that checks MATLAB-related prerequisites using only built-in Windows tools (PowerShell and Command Prompt). No MATLAB installation is required. You now get both a colorful HTML dashboard **and** the classic menu/scan experience.
 
 ## Quick start (pick your flavor)
-1) **Slick HTML dashboard (with CSS + buttons)**  
-   - Double-click `start_dashboard.cmd` (or run `powershell -ExecutionPolicy Bypass -File requirements_dashboard.ps1`).  
-   - Your default browser opens a neon-styled dashboard; click **Scan all** or the per-card shortcuts to refresh statuses live.
+1) **Slick HTML dashboard (with CSS + buttons)**
+   - Double-click `start_dashboard.cmd` (or run `powershell -ExecutionPolicy Bypass -File requirements_dashboard.ps1`).
+   - The script now self-checks Windows/PowerShell first; if a permission or port issue appears, it tells you exactly how to fix it.
+   - Your default browser opens a neon-styled dashboard with a Windows badge plus the core MATLAB/Java/.NET/compiler cards. Use **Scan all** or the per-card shortcuts to refresh statuses live.
 
 2) **Classic menu / one-shot scan**  
    - Double-click `requirements_checker.cmd` (or right-click `requirements_checker.ps1` → **Run with PowerShell**).  
@@ -38,3 +39,4 @@ powershell -ExecutionPolicy Bypass -File requirements_checker.ps1 -ScanAll
 ## Troubleshooting
 - If a check shows `⚠️` or `❌`, let the script open the official download page, install or add the tool to your `PATH`, then run **Scan All** again.
 - Running from a network drive with restricted execution policies? Launch an elevated PowerShell and rerun with `-ExecutionPolicy Bypass`.
+- If the dashboard reports it cannot reserve the localhost port, rerun as Administrator once and execute `netsh http add urlacl url=http://+:5133/ user=Everyone`, or start it on another port via `start_dashboard.cmd -Port 0`.

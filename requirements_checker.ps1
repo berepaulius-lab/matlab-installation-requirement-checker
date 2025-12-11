@@ -4,6 +4,7 @@ param(
 )
 
 $latestMatlabRelease = 'R2024b'
+$minPowershell = [version]'5.1'
 
 function Parse-Version {
     param([string]$Raw)
@@ -20,6 +21,35 @@ function Parse-Version {
         return [version]$token
     } catch {
         return $null
+    }
+}
+
+function Get-WindowsStatus {
+    $osCaption = $null
+    $osBuild = $null
+    $edition = $null
+    try {
+        $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
+        $osCaption = $os.Caption
+        $osBuild = $os.BuildNumber
+        $edition = $os.OperatingSystemSKU
+    } catch {
+        $osCaption = (Get-ItemProperty 'HKLM:SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' -ErrorAction SilentlyContinue).ProductName
+        $osBuild = [Environment]::OSVersion.Version.Build
+    }
+
+    $arch = if ([Environment]::Is64BitOperatingSystem) { '64-bit' } else { '32-bit' }
+    $psv = $PSVersionTable.PSVersion
+    $psOkay = $psv -ge $minPowershell
+    $psNote = if ($psOkay) { "PowerShell $psv" } else { "PowerShell $psv (upgrade to $minPowershell or newer)" }
+
+    return [PSCustomObject]@{
+        Label = 'Windows'
+        Emoji = if ($psOkay) { '🪟' } else { '⚠️' }
+        Value = ("$osCaption (build $osBuild), $arch — $psNote").Trim()
+        Color = if ($psOkay) { [ConsoleColor]::Cyan } else { [ConsoleColor]::Yellow }
+        NeedsDownload = -not $psOkay
+        DownloadUrl = 'https://aka.ms/powershell-release?tag=stable'
     }
 }
 
@@ -191,7 +221,9 @@ function Offer-Download {
 }
 
 function Show-Checks {
+    $osStatus = Get-WindowsStatus
     Write-Header 'MATLAB Requirement Checker (no MATLAB needed)'
+    Write-Status -Label $osStatus.Label -Emoji $osStatus.Emoji -Value $osStatus.Value -Color $osStatus.Color
     Write-Host "Press A then Enter to scan everything, or choose a specific check." -ForegroundColor White
     Write-Host "Missing/outdated items will offer to open the official download page." -ForegroundColor DarkGray
     Write-Host ""
@@ -234,6 +266,7 @@ function Show-Result {
 
 function Run-AllChecks {
     Write-Host ""
+    Show-Result (Get-WindowsStatus)
     Show-Result (Get-MatlabStatus)
     Show-Result (Get-JavaStatus)
     Show-Result (Get-DotNetStatus)
@@ -242,6 +275,7 @@ function Run-AllChecks {
 
 function Get-AllStatuses {
     return @(
+        Get-WindowsStatus
         Get-MatlabStatus
         Get-JavaStatus
         Get-DotNetStatus

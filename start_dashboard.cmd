@@ -1,4 +1,4 @@
 @echo off
 setlocal
 set SCRIPT_DIR=%~dp0
-powershell.exe -ExecutionPolicy Bypass -File "%SCRIPT_DIR%requirements_dashboard.ps1"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%requirements_dashboard.ps1" %*

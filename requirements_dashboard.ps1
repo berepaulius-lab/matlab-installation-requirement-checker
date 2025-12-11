@@ -17,6 +17,16 @@ $ErrorActionPreference = 'Stop'
 # Reuse the core detection logic without triggering the CLI menu
 . "$PSScriptRoot/requirements_checker.ps1"
 
+function Ensure-Environment {
+    if (-not $IsWindows) {
+        throw "This dashboard is Windows-only."
+    }
+
+    if ($PSVersionTable.PSVersion -lt $minPowershell) {
+        throw "PowerShell $minPowershell or newer is required. Current: $($PSVersionTable.PSVersion)."
+    }
+}
+
 function Write-Response {
     param(
         [System.Net.HttpListenerResponse]$Response,
@@ -50,6 +60,39 @@ function Get-StatusPayload {
 
 function Get-AllPayloads {
     return (Get-AllStatuses | ForEach-Object { Get-StatusPayload $_ })
+}
+
+function New-Listener {
+    param([int]$Port)
+
+    if ($Port -eq 0) {
+        $tcp = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+        $tcp.Start()
+        $Port = $tcp.LocalEndpoint.Port
+        $tcp.Stop()
+    }
+
+    $listener = [System.Net.HttpListener]::new()
+    $prefix = "http://localhost:$Port/"
+    try {
+        $listener.Prefixes.Add($prefix)
+    } catch {
+        throw "Unable to register listener prefix $prefix. Try running as Administrator."
+    }
+
+    try {
+        $listener.Start()
+    } catch [System.Net.HttpListenerException] {
+        if ($_.Exception.ErrorCode -eq 5) {
+            throw "Access denied reserving $prefix. Run an elevated PowerShell and execute: `netsh http add urlacl url=http://+:$Port/ user=Everyone`"
+        }
+        if ($_.Exception.ErrorCode -eq 183) {
+            throw "Port $Port already in use. Pick another with -Port."
+        }
+        throw "HttpListener failed to start on $prefix: $($_.Exception.Message)"
+    }
+
+    return [PSCustomObject]@{ Listener = $listener; Port = $Port }
 }
 
 $dashboardHtml = @"
@@ -225,6 +268,11 @@ $dashboardHtml = @"
       </div>
     </header>
     <div class="grid">
+      <div class="card" id="card-windows">
+        <header><div class="emoji">🪟</div><div class="title">Windows</div></header>
+        <div class="value">Detecting your edition…</div>
+        <div class="pill">Environment</div>
+      </div>
       <div class="card" id="card-matlab">
         <header><div class="emoji">⏳</div><div class="title">MATLAB</div></header>
         <div class="value">Waiting for scan…</div>
@@ -250,6 +298,7 @@ $dashboardHtml = @"
   </div>
   <script>
     const map = {
+      windows: 'Windows',
       matlab: 'MATLAB',
       java: 'Java JDK',
       dotnet: '.NET Runtime',
@@ -326,32 +375,46 @@ $dashboardHtml = @"
 </html>
 "@
 
-$listener = [System.Net.HttpListener]::new()
-$listener.Prefixes.Add("http://localhost:$Port/")
-$listener.Start()
-
-Write-Host "Serving the CSS dashboard at http://localhost:$Port/" -ForegroundColor Cyan
-Write-Host "Press Ctrl+C to stop." -ForegroundColor DarkGray
-
-Start-Process "http://localhost:$Port/" | Out-Null
-
 try {
-    while ($listener.IsListening) {
-        $context = $listener.GetContext()
-        $path = $context.Request.Url.AbsolutePath.Trim('/').ToLower()
+    Ensure-Environment
 
-        switch ($path) {
-            '' { Write-Response -Response $context.Response -Body $dashboardHtml -ContentType 'text/html; charset=utf-8' }
-            'api/scan/all' { Send-Json -Response $context.Response -Data @{ items = Get-AllPayloads } }
-            'api/scan/matlab' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-MatlabStatus)) }
-            'api/scan/java' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-JavaStatus)) }
-            'api/scan/dotnet' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-DotNetStatus)) }
-            'api/scan/compiler' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-CompilerStatus)) }
-            Default { Write-Response -Response $context.Response -Body 'Not found' -StatusCode 404 }
+    $listenerInfo = New-Listener -Port $Port
+    $listener = $listenerInfo.Listener
+    $Port = $listenerInfo.Port
+
+    Write-Host "Serving the CSS dashboard at http://localhost:$Port/" -ForegroundColor Cyan
+    Write-Host "Press Ctrl+C to stop." -ForegroundColor DarkGray
+
+    try {
+        Start-Process "http://localhost:$Port/" | Out-Null
+    } catch {
+        Write-Host "Browser launch blocked; open http://localhost:$Port/ manually." -ForegroundColor Yellow
+    }
+
+    try {
+        while ($listener.IsListening) {
+            $context = $listener.GetContext()
+            $path = $context.Request.Url.AbsolutePath.Trim('/').ToLower()
+
+            switch ($path) {
+                '' { Write-Response -Response $context.Response -Body $dashboardHtml -ContentType 'text/html; charset=utf-8' }
+                'api/scan/all' { Send-Json -Response $context.Response -Data @{ items = Get-AllPayloads } }
+                'api/scan/windows' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-WindowsStatus)) }
+                'api/scan/matlab' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-MatlabStatus)) }
+                'api/scan/java' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-JavaStatus)) }
+                'api/scan/dotnet' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-DotNetStatus)) }
+                'api/scan/compiler' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-CompilerStatus)) }
+                Default { Write-Response -Response $context.Response -Body 'Not found' -StatusCode 404 }
+            }
         }
     }
+    finally {
+        if ($listener.IsListening) { $listener.Stop() }
+        $listener.Close()
+    }
 }
-finally {
-    if ($listener.IsListening) { $listener.Stop() }
-    $listener.Close()
+catch {
+    Write-Host "❌ $($_.Exception.Message)" -ForegroundColor Red
+    if ($listener -and $listener.IsListening) { $listener.Stop(); $listener.Close() }
+    exit 1
 }
