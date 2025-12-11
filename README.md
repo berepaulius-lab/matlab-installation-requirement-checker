@@ -1,50 +1,32 @@
-# MATLAB Installation Requirement Checker
+# Windows 11 Requirement Checker (no MATLAB needed)
 
-A one-click, emoji-forward helper that checks common MATLAB installation prerequisites. You can run it directly inside MATLAB or share a prepackaged zip that includes a built executable plus simple "Start Here" guidance.
+An emoji-forward helper that checks MATLAB-related prerequisites using only built-in Windows tools (PowerShell and Command Prompt). No MATLAB installation is required. Double-click `requirements_checker.cmd` or run the PowerShell script for a friendly menu with a **Scan All** option.
 
-## Pick your path
-- **Fast scan in MATLAB:** run the UI or console snapshot directly from MATLAB.
-- **Share a zip to end users:** build the executable once, create a zip bundle, and send the "download me" package so others can double-click and run.
+## Quick start (double-click friendly)
+1. Download or clone this folder.
+2. Double-click `requirements_checker.cmd` (or right-click `requirements_checker.ps1` and choose **Run with PowerShell**).
+3. Press **A** then **Enter** for an instant scan, or pick an individual check from the menu.
 
-## Quick start (MATLAB session)
-1. Clone or unzip the repository.
-2. In MATLAB, add the folder to your path and run one of the entry points:
-   - UI dashboard: `requirements_checker_ui` (or run `launch_requirements_checker`).
-   - Console snapshot: `quick_requirements_check`.
-3. Click **Scan All** (UI) or read the console output to see emoji results for MATLAB, Java JDK, .NET runtime, and compiler availability, plus product-specific notes.
+You can also run silently from a terminal:
 
-## Build a standalone executable
-> Requires MATLAB Compiler and MATLAB Runtime for end users.
+```powershell
+powershell -ExecutionPolicy Bypass -File requirements_checker.ps1 -ScanAll
+```
 
-1. In MATLAB, run:
-   ```matlab
-   build_requirements_checker_exe(fullfile(pwd, 'dist'))
+## Create a "download me" zip on Windows
+1. Open PowerShell in this folder.
+2. Run:
+   ```powershell
+   ./package_windows_checker.ps1
    ```
-   This generates `requirements_checker` (or `requirements_checker.exe` on Windows) inside `dist`.
-2. Double-click the executable to open the UI. End users only need the MATLAB Runtime.
-
-## Create a "download me" zip bundle
-> Perfect for sharing a ready-to-run package with non-MATLAB users.
-
-1. Build the executable as above so `dist/` contains the generated app.
-2. From MATLAB, create the distributable zip:
-   ```matlab
-   package_requirements_checker('dist', fullfile(pwd, 'requirements-checker-bundle.zip'))
-   ```
-3. Share `requirements-checker-bundle.zip`. Inside, users will find:
-   - `START_HERE.txt` with step-by-step run instructions.
-   - `requirements_checker` executable plus supporting files.
-   - A copy of this README and source `.m` files (handy for MATLAB users).
+3. Share the generated `requirements-checker-windows.zip`. It contains the CMD launcher, PowerShell script, README, and `START_HERE.txt` with simplified steps.
 
 ## What the checks cover
-- Installed MATLAB release vs. latest known release (currently `R2024b`).
-- Java JDK detection (Java 8+ for MATLAB Compiler SDK Java packages).
+- MATLAB presence on `PATH` (no MATLAB runtime required to run the checker).
+- Java JDK detection (needs Java 8+ for MATLAB Compiler SDK Java packages).
 - .NET runtime detection (needed for MATLAB Compiler SDK .NET assemblies).
-- Supported compiler detection (required for Embedded/MATLAB/Simulink Coder and MATLAB Compiler add-ins).
-- Highlights of product-specific requirements and hardware setup notes.
+- Supported compiler detection (MSVC `cl`, `gcc`, or `clang`).
 
 ## Troubleshooting
-- If a check shows `⚠️` or `❌`, click the individual **Scan** button or rerun the console snapshot to refresh.
-- Ensure command-line tools (`java`, `javac`, `dotnet`) are on your system `PATH` for accurate detection.
-- Rebuild the executable after updating MATLAB or its toolboxes to keep the packaged checks current.
-
+- If a check shows `⚠️` or `❌`, install or add the tool to your `PATH` and run **Scan All** again.
+- Running from a network drive with restricted execution policies? Launch an elevated PowerShell and rerun with `-ExecutionPolicy Bypass`.
