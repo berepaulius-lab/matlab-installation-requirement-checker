@@ -5,6 +5,8 @@ param(
 $items = @(
     'requirements_checker.ps1',
     'requirements_checker.cmd',
+    'requirements_dashboard.ps1',
+    'start_dashboard.cmd',
     'README.md',
     'START_HERE.txt'
 ) | Where-Object { Test-Path $_ }

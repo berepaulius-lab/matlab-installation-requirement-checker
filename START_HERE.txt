@@ -1,23 +1,20 @@
-Double-click guide (Windows 11, no MATLAB required)
---------------------------------------------------
-1) Double-click "requirements_checker.cmd"
-2) Press A then Enter to scan everything (or pick 1-4 for individual checks)
-3) If a check is missing or outdated, choose Yes to open the official download page
-4) Read the emoji results:
-   - ✅ item found
-   - ⚠️ partially satisfied or older version
-   - ❌ not found
+QUICK STEPS (Windows 11, no MATLAB required)
+-------------------------------------------
 
-Command-line alternative
-------------------------
-Open PowerShell here and run:
+1) Pick your checker
+   - Double-click start_dashboard.cmd for the CSS-styled browser dashboard, OR
+   - Double-click requirements_checker.cmd for the classic menu, OR
+   - Right-click either .ps1 and choose "Run with PowerShell"
 
-  powershell -ExecutionPolicy Bypass -File requirements_checker.ps1 -ScanAll
+2) Scan everything
+   - Dashboard: click "Scan all" (per-card buttons update instantly)
+   - Menu: press A then Enter
+   - Missing items offer to open the official download page
 
-Sharing a zip
--------------
-Open PowerShell here and run:
+3) Silent mode (optional)
+   - Open PowerShell in this folder
+   - Run: powershell -ExecutionPolicy Bypass -File requirements_checker.ps1 -ScanAll
 
-  ./package_windows_checker.ps1
-
-Send the generated requirements-checker-windows.zip to others so they can double-click and scan.
+4) Shareable zip (optional, from PowerShell)
+   - Run: ./package_windows_checker.ps1
+   - Send the generated requirements-checker-windows.zip

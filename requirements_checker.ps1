@@ -41,6 +41,19 @@ function Write-Status {
     Write-Host " $Emoji  $padded $Value" -ForegroundColor $Color
 }
 
+function Simplify-Status {
+    param([PSCustomObject]$Status)
+
+    return [PSCustomObject]@{
+        Label         = $Status.Label
+        Emoji         = $Status.Emoji
+        Value         = $Status.Value
+        Color         = ($Status.Color.ToString())
+        NeedsDownload = $Status.NeedsDownload
+        DownloadUrl   = $Status.DownloadUrl
+    }
+}
+
 function Get-MatlabStatus {
     $matlabCmd = Get-Command matlab -ErrorAction SilentlyContinue
     if ($null -eq $matlabCmd) {
@@ -220,20 +233,32 @@ function Show-Result {
 }
 
 function Run-AllChecks {
-    Write-Host "" 
+    Write-Host ""
     Show-Result (Get-MatlabStatus)
     Show-Result (Get-JavaStatus)
     Show-Result (Get-DotNetStatus)
     Show-Result (Get-CompilerStatus)
 }
 
-if ($ScanAll) {
-    Run-AllChecks
-    if (-not $Quiet) {
-        Write-Host "" 
-        Write-Host "Done." -ForegroundColor Green
-    }
-    exit 0
+function Get-AllStatuses {
+    return @(
+        Get-MatlabStatus
+        Get-JavaStatus
+        Get-DotNetStatus
+        Get-CompilerStatus
+    )
 }
 
-Show-Checks
+# Skip interactive entry when dot-sourced for reuse by other scripts
+if ($MyInvocation.InvocationName -ne '.') {
+    if ($ScanAll) {
+        Run-AllChecks
+        if (-not $Quiet) {
+            Write-Host ""
+            Write-Host "Done." -ForegroundColor Green
+        }
+        exit 0
+    }
+
+    Show-Checks
+}
