@@ -2,7 +2,8 @@ Double-click guide (Windows 11, no MATLAB required)
 --------------------------------------------------
 1) Double-click "requirements_checker.cmd"
 2) Press A then Enter to scan everything (or pick 1-4 for individual checks)
-3) Read the emoji results:
+3) If a check is missing or outdated, choose Yes to open the official download page
+4) Read the emoji results:
    - ✅ item found
    - ⚠️ partially satisfied or older version
    - ❌ not found

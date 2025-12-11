@@ -6,6 +6,7 @@ An emoji-forward helper that checks MATLAB-related prerequisites using only buil
 1. Download or clone this folder.
 2. Double-click `requirements_checker.cmd` (or right-click `requirements_checker.ps1` and choose **Run with PowerShell**).
 3. Press **A** then **Enter** for an instant scan, or pick an individual check from the menu.
+4. If something is missing or outdated, accept the prompt to open the official download page.
 
 You can also run silently from a terminal:
 
@@ -23,10 +24,10 @@ powershell -ExecutionPolicy Bypass -File requirements_checker.ps1 -ScanAll
 
 ## What the checks cover
 - MATLAB presence on `PATH` (no MATLAB runtime required to run the checker).
-- Java JDK detection (needs Java 8+ for MATLAB Compiler SDK Java packages).
+- Java JDK detection with smart version parsing (Java 8+ recommended for MATLAB Compiler SDK Java packages).
 - .NET runtime detection (needed for MATLAB Compiler SDK .NET assemblies).
 - Supported compiler detection (MSVC `cl`, `gcc`, or `clang`).
 
 ## Troubleshooting
-- If a check shows `⚠️` or `❌`, install or add the tool to your `PATH` and run **Scan All** again.
+- If a check shows `⚠️` or `❌`, let the script open the official download page, install or add the tool to your `PATH`, then run **Scan All** again.
 - Running from a network drive with restricted execution policies? Launch an elevated PowerShell and rerun with `-ExecutionPolicy Bypass`.

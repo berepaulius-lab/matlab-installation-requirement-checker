@@ -5,6 +5,24 @@ param(
 
 $latestMatlabRelease = 'R2024b'
 
+function Parse-Version {
+    param([string]$Raw)
+
+    if ([string]::IsNullOrWhiteSpace($Raw)) { return $null }
+
+    # Extract a numeric version token like 24.0.1 from arbitrary text
+    $token = $Raw
+    if ($Raw -match '([0-9]+(?:\.[0-9]+)*)') {
+        $token = $Matches[1]
+    }
+
+    try {
+        return [version]$token
+    } catch {
+        return $null
+    }
+}
+
 function Write-Header {
     param([string]$Title)
     Write-Host "==============================" -ForegroundColor DarkCyan
@@ -31,6 +49,7 @@ function Get-MatlabStatus {
             Emoji = '❌'
             Value = 'Not detected on PATH'
             Color = [ConsoleColor]::Red
+            NeedsDownload = $false
         }
     }
 
@@ -39,6 +58,7 @@ function Get-MatlabStatus {
         Emoji = '✅'
         Value = "Found (`$($matlabCmd.Source)`), latest known $latestMatlabRelease"
         Color = [ConsoleColor]::Green
+        NeedsDownload = $false
     }
 }
 
@@ -50,6 +70,8 @@ function Get-JavaStatus {
             Emoji = '❌'
             Value = 'Not detected on PATH'
             Color = [ConsoleColor]::Red
+            NeedsDownload = $true
+            DownloadUrl = 'https://www.oracle.com/java/technologies/downloads/'
         }
     }
 
@@ -62,9 +84,17 @@ function Get-JavaStatus {
 
     $emoji = '✅'
     $color = [ConsoleColor]::Green
-    if ($version -lt '1.8') {
+    $needsDownload = $false
+    $parsedVersion = Parse-Version -Raw $version
+
+    if ($null -eq $parsedVersion) {
         $emoji = '⚠️'
         $color = [ConsoleColor]::Yellow
+        $needsDownload = $true
+    } elseif ($parsedVersion -lt [version]'1.8') {
+        $emoji = '⚠️'
+        $color = [ConsoleColor]::Yellow
+        $needsDownload = $true
     }
 
     return [PSCustomObject]@{
@@ -72,6 +102,8 @@ function Get-JavaStatus {
         Emoji = $emoji
         Value = "Detected ($version)"
         Color = $color
+        NeedsDownload = $needsDownload
+        DownloadUrl = 'https://www.oracle.com/java/technologies/downloads/'
     }
 }
 
@@ -83,6 +115,8 @@ function Get-DotNetStatus {
             Emoji = '❌'
             Value = 'Not detected on PATH'
             Color = [ConsoleColor]::Red
+            NeedsDownload = $true
+            DownloadUrl = 'https://dotnet.microsoft.com/en-us/download/dotnet'
         }
     }
 
@@ -92,6 +126,8 @@ function Get-DotNetStatus {
         Emoji = '✅'
         Value = "Detected ($version)"
         Color = [ConsoleColor]::Green
+        NeedsDownload = $false
+        DownloadUrl = 'https://dotnet.microsoft.com/en-us/download/dotnet'
     }
 }
 
@@ -110,6 +146,8 @@ function Get-CompilerStatus {
             Emoji = '❌'
             Value = 'None detected (add MSVC, GCC, or Clang)'
             Color = [ConsoleColor]::Red
+            NeedsDownload = $true
+            DownloadUrl = 'https://visualstudio.microsoft.com/visual-cpp-build-tools/'
         }
     }
 
@@ -118,13 +156,32 @@ function Get-CompilerStatus {
         Emoji = '✅'
         Value = "Detected: $($found -join ', ')"
         Color = [ConsoleColor]::Green
+        NeedsDownload = $false
+        DownloadUrl = 'https://visualstudio.microsoft.com/visual-cpp-build-tools/'
+    }
+}
+
+function Offer-Download {
+    param([PSCustomObject]$Status)
+
+    if (-not $Status.NeedsDownload) { return }
+    if (-not $Status.DownloadUrl) { return }
+
+    $response = Read-Host "Open the official $($Status.Label) download page now? (Y/N, default Y)"
+    if ([string]::IsNullOrWhiteSpace($response) -or $response.Trim().ToUpper() -eq 'Y') {
+        try {
+            Start-Process $Status.DownloadUrl | Out-Null
+        } catch {
+            Write-Host "Couldn't launch browser. Please open: $($Status.DownloadUrl)" -ForegroundColor Yellow
+        }
     }
 }
 
 function Show-Checks {
     Write-Header 'MATLAB Requirement Checker (no MATLAB needed)'
     Write-Host "Press A then Enter to scan everything, or choose a specific check." -ForegroundColor White
-    Write-Host "" 
+    Write-Host "Missing/outdated items will offer to open the official download page." -ForegroundColor DarkGray
+    Write-Host ""
     Write-Host "  [A] Scan all" -ForegroundColor Green
     Write-Host "  [1] MATLAB" -ForegroundColor Gray
     Write-Host "  [2] Java JDK" -ForegroundColor Gray
@@ -155,8 +212,11 @@ function Show-Checks {
 
 function Show-Result {
     param([PSCustomObject]$Status)
-    Write-Host "" 
+    Write-Host ""
     Write-Status -Label $Status.Label -Emoji $Status.Emoji -Value $Status.Value -Color $Status.Color
+    if (-not $ScanAll) {
+        Offer-Download -Status $Status
+    }
 }
 
 function Run-AllChecks {
