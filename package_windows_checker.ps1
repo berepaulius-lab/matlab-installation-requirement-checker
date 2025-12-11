@@ -5,7 +5,8 @@ param(
 $items = @(
     'requirements_checker.ps1',
     'run_checker.cmd',
-    'README.md'
+    'README.md',
+    'logs'
 ) | Where-Object { Test-Path $_ }
 
 if ($items.Count -eq 0) {

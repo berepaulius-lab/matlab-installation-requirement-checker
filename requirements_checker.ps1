@@ -11,7 +11,7 @@ param(
 
 $latestMatlabRelease = 'R2024b'
 $minPowershell = [version]'5.1'
-$defaultLogRoot = if ($env:USERPROFILE) { Join-Path $env:USERPROFILE 'Logs\MatlabRequirementChecker' } else { Join-Path $PSScriptRoot 'logs' }
+$defaultLogRoot = Join-Path $PSScriptRoot 'logs'
 $script:LogDirectory = if ($LogPath) { $LogPath } else { $defaultLogRoot }
 $script:LogFile = $LogFile
 $script:TranscriptStarted = $false
@@ -74,7 +74,7 @@ function Start-TranscriptSafe {
 function Confirm-Logging {
     if ($Quiet -or $Dashboard) { return $true }
     Write-Host "Logging everything to:`n  $script:LogFile" -ForegroundColor Cyan
-    Write-Host "A per-user log folder lives at $script:LogDirectory. Send the newest log-###.txt if something looks off." -ForegroundColor DarkGray
+    Write-Host "Logs live beside this launcher at $script:LogDirectory. Send the newest log-###.txt if something looks off." -ForegroundColor DarkGray
     $response = Read-Host "Start logging now? (Y/n)"
     if ($response -and $response.Trim().ToUpper() -eq 'N') {
         Write-Log -Message "User aborted before checks" -Level 'WARN'
@@ -143,18 +143,22 @@ function Get-WindowsStatus {
 }
 
 function Get-InternetStatus {
-    $target = 'www.microsoft.com'
+    $targets = @('1.1.1.1','example.com','cloudflare-dns.com')
     $reachable = $false
-    try {
-        $reachable = Test-NetConnection -ComputerName $target -InformationLevel Quiet -WarningAction SilentlyContinue
-    } catch {
-        $reachable = $false
+    $hit = $null
+    foreach ($target in $targets) {
+        try {
+            $reachable = Test-NetConnection -ComputerName $target -InformationLevel Quiet -WarningAction SilentlyContinue
+            if ($reachable) { $hit = $target; break }
+        } catch {
+            $reachable = $false
+        }
     }
 
     $obj = [PSCustomObject]@{
         Label = 'Internet'
         Emoji = if ($reachable) { '✅' } else { '⚠️' }
-        Value = if ($reachable) { "Online (reachable $target)" } else { "Offline (can't reach $target)" }
+        Value = if ($reachable) { "Online (reachable $hit)" } else { "Offline (no reply from basic targets)" }
         Color = if ($reachable) { [ConsoleColor]::Green } else { [ConsoleColor]::Yellow }
         NeedsDownload = $false
     }
@@ -820,7 +824,7 @@ function Start-Dashboard {
         <div class="pill">Not yet scanned</div>
       </div>
     </div>
-    <div class="footer">Uses built-in Windows tools only. Logs live in %USERPROFILE%\\Logs\\MatlabRequirementChecker.</div>
+    <div class="footer">Uses built-in Windows tools only. Logs live next to this launcher in the <code>logs</code> folder.</div>
   </div>
   <script>
     const map = {

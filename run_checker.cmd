@@ -1,10 +1,10 @@
 @echo off
 setlocal ENABLEDELAYEDEXPANSION
 set "SCRIPT_DIR=%~dp0"
-set "LOG_DIR=%USERPROFILE%\Logs\MatlabRequirementChecker"
+set "LOG_DIR=%SCRIPT_DIR%logs"
 set "PREREQ_FAILED=0"
 
-rem Ensure the per-user log folder exists
+rem Ensure the local log folder exists beside the launcher
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 
 rem Pick the next numeric log file (log-001.txt, log-002.txt, ...)
@@ -29,10 +29,15 @@ call :logmsg "[INFO] Checking Command Prompt prerequisites (curl, msiexec, netwo
 call :require_cmd curl.exe "curl.exe is missing. Please enable the built-in curl feature or update Windows 11."
 call :require_cmd msiexec.exe "msiexec.exe is missing. Windows Installer must be enabled to continue."
 
-call :logmsg "[INFO] Quick connectivity probe to microsoft.com (downloads need basic internet)..."
-ping -n 1 microsoft.com >nul 2>&1
-if errorlevel 1 (
-  call :logmsg "[WARN] Cannot reach microsoft.com; downloads may fail."
+call :logmsg "[INFO] Quick connectivity probe (no Microsoft account needed)..."
+set "NET_OK=0"
+for %%h in (1.1.1.1 example.com cloudflare-dns.com) do (
+  ping -n 1 %%h >nul 2>&1 && set "NET_OK=1"
+)
+if "%NET_OK%"=="1" (
+  call :logmsg "[INFO] Basic connectivity looks okay."
+) else (
+  call :logmsg "[WARN] Network looks unreachable right now. Downloads may fail."
   echo [WARN] Network looks unreachable right now. Downloads may fail.
 )
 
