@@ -19,6 +19,9 @@ set "PAD=00!LOG_INDEX!"
 set "PAD=!PAD:~-3!"
 set "LOG_FILE=%LOG_DIR%\%LOG_PREFIX%!PAD!%LOG_EXT%"
 
+if not exist "%LOG_FILE%" (
+  >"%LOG_FILE%" echo [INFO] Creating log file at %LOG_FILE%
+)
 call :log "[INFO] Starting log in: %LOG_FILE%"
 call :log "(Everything printed to the screen will also be copied here.)"
 
@@ -158,4 +161,12 @@ exit /b 0
 
 :end
 call :log "[INFO] Finished. See %LOG_FILE% for details."
+echo(
+echo ------------------------------------------------------------
+echo  All output has been saved to:
+echo    %LOG_FILE%
+echo ------------------------------------------------------------
+echo  Press Enter to close this window.
+echo ------------------------------------------------------------
+pause >nul
 endlocal

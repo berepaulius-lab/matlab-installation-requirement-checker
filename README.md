@@ -1,10 +1,11 @@
 # Windows Requirement Checker (one-click, self-contained)
 
 Double-click **run_checker.cmd** from Command Prompt. The launcher immediately creates a numbered log file in the local
-**logs** folder, then runs the richest checker available automatically—no decisions needed.
+**logs** folder, then runs the richest checker available automatically—no decisions needed. When the checks finish, the
+window waits for you to press Enter so you always see the results and know where the log lives.
 
 ## How it runs (no extra setup)
-1. Create `logs/log-###.txt` beside the launcher and mirror all console output there.
+1. Create `logs/log-###.txt` beside the launcher and mirror all console output there (first thing that happens).
 2. If **checker.exe** is present, run it.
 3. Otherwise, automatically download a portable Node.js runtime (saved under **runtime/**) with built-in `curl`/`tar`
    and run `checker.js` through it.
@@ -37,6 +38,6 @@ Double-click **run_checker.cmd** from Command Prompt. The launcher immediately c
 - `checker.js` – Node-based checker used by the EXE/portable runtime.
 - `checker.exe` – optional packaged binary produced by `build_exe.cmd`.
 - `runtime/` – created automatically when the launcher downloads a portable Node runtime.
-- `logs/` – ready-made folder where log files are created.
+- `logs/` – ready-made folder where log files are created (window stays open so you can note the path).
 - `build_exe.cmd` – helper to build `checker.exe` with `pkg`.
 - `package_windows_checker.ps1` – helper to zip the above for distribution.
