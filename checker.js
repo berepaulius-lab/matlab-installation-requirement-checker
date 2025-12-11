@@ -3,12 +3,14 @@
  * Windows requirement checker (Node/EXE)
  * - Creates a log immediately (local logs folder) and mirrors output to console
  * - Runs basic checks: OS, Java, .NET, compilers, disk, memory, internet
+ * - Offers one-key auto-fix installs for missing Java/.NET/compilers using built-in curl/msiexec/winget
  * - Can be packaged into a standalone exe via `npm run build:exe`
  */
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const os = require('os');
+const readline = require('readline');
 
 const SCRIPT_DIR = __dirname;
 const LOG_DIR = path.join(SCRIPT_DIR, 'logs');
@@ -70,6 +72,42 @@ function run(cmd, args, options = {}) {
     status: result.status,
     error: result.error,
   };
+}
+
+function promptYesNo(question, defaultYes = true) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const suffix = defaultYes ? ' [Y/n] ' : ' [y/N] ';
+    rl.question(question + suffix, (answer) => {
+      rl.close();
+      const trimmed = (answer || '').trim().toLowerCase();
+      if (!trimmed) return resolve(defaultYes);
+      resolve(trimmed === 'y' || trimmed === 'yes');
+    });
+  });
+}
+
+function downloadFile(url, dest) {
+  const res = run('curl', ['-L', url, '-o', dest]);
+  return res.ok;
+}
+
+function installMsi(msiPath) {
+  return run('msiexec', ['/i', msiPath, '/qn', '/norestart']);
+}
+
+function installExe(exePath, args = ['/quiet', '/norestart']) {
+  return run(exePath, args, { shell: true });
+}
+
+function pauseForExit(message = 'Press Enter to close this window...') {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    rl.question(message, () => {
+      rl.close();
+      resolve();
+    });
+  });
 }
 
 function checkOS() {
@@ -187,6 +225,59 @@ function checkMemory() {
   return { label: 'Memory', status: 'ok', detail: `${freeGb.toFixed(1)} GB free of ${totalGb.toFixed(1)} GB (approx)` };
 }
 
+async function attemptFixes(results) {
+  const missing = results.filter((r) => r.status !== 'ok');
+  if (missing.length === 0) return;
+  log('[INFO] Missing items detected: ' + missing.map((m) => m.label).join(', '));
+  const consent = await promptYesNo('Fix issues and install missing tools automatically?', true);
+  log(`[INFO] Auto-fix consent: ${consent ? 'yes' : 'no'}`);
+  if (!consent) return;
+
+  for (const item of missing) {
+    if (item.label === 'Java JDK') {
+      await installJava();
+    } else if (item.label === '.NET') {
+      await installDotNet();
+    } else if (item.label === 'C/C++ compiler') {
+      await installCompiler();
+    }
+  }
+}
+
+async function installJava() {
+  const url = 'https://aka.ms/download-jdk/microsoft-jdk-17-windows-x64.msi';
+  const tmp = path.join(os.tmpdir(), 'jdk-installer.msi');
+  log(`[INFO] Downloading Java (JDK 17) from ${url} ...`);
+  if (!downloadFile(url, tmp)) {
+    log('❌ Java download failed.');
+    return;
+  }
+  const res = installMsi(tmp);
+  log(res.ok ? '✅ Java install triggered (silent)' : `❌ Java install failed (code ${res.status ?? 'unknown'})`);
+}
+
+async function installDotNet() {
+  const url = 'https://dotnet.microsoft.com/permalink/dotnet-runtime-latest-win-x64';
+  const tmp = path.join(os.tmpdir(), 'dotnet-runtime.exe');
+  log(`[INFO] Downloading .NET runtime from ${url} ...`);
+  if (!downloadFile(url, tmp)) {
+    log('❌ .NET download failed.');
+    return;
+  }
+  const res = installExe(tmp, ['/quiet', '/norestart']);
+  log(res.ok ? '✅ .NET install triggered (silent)' : `❌ .NET install failed (code ${res.status ?? 'unknown'})`);
+}
+
+async function installCompiler() {
+  log('[INFO] Trying winget for MSVC Build Tools (silent)...');
+  const winget = run('winget', ['install', '-e', '--id', 'Microsoft.VisualStudio.2022.BuildTools', '--silent', '--accept-package-agreements', '--accept-source-agreements']);
+  if (winget.ok) {
+    log('✅ Winget install triggered for MSVC Build Tools.');
+    return;
+  }
+  log('[WARN] winget failed or is missing; skipping compiler auto-install.');
+}
+
 function formatResult(r) {
   const icon = r.status === 'ok' ? '✅' : r.status === 'warn' ? '⚠️' : '❌';
   return `${icon} ${r.label}: ${r.detail}`;
@@ -196,6 +287,14 @@ async function main() {
   const args = parseArgs();
   LOG_FILE = ensureLogFile(args.logPath);
   log('[INFO] Log will capture all output.');
+
+  const proceed = await promptYesNo('Start full checks now?', true);
+  log(`[INFO] User chose to ${proceed ? 'start' : 'cancel'} checks.`);
+  if (!proceed) {
+    log('❌ Checks were cancelled by user.');
+    await pauseForExit();
+    return;
+  }
 
   const checks = [checkOS, checkInternet, checkJava, checkDotNet, checkCompilers, checkDisk, checkMemory];
   log('[INFO] Running checks...');
@@ -213,7 +312,9 @@ async function main() {
   log('Summary:');
   results.forEach((r) => log('  ' + formatResult(r)));
   log('');
+  await attemptFixes(results);
   log(`Detailed log saved to: ${LOG_FILE}`);
+  await pauseForExit();
 }
 
 main().catch((err) => {

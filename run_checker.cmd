@@ -25,6 +25,9 @@ if not exist "%LOG_FILE%" (
 call :log "[INFO] Starting log in: %LOG_FILE%"
 call :log "(Everything printed to the screen will also be copied here.)"
 
+rem Try to build a bundled exe automatically when it is missing
+call :ensure_exe
+
 if exist "%SCRIPT_DIR%checker.exe" (
   call :log "[INFO] Running bundled checker.exe..."
   "%SCRIPT_DIR%checker.exe" --log-path "%LOG_FILE%"
@@ -45,6 +48,38 @@ goto :end
 :log
 echo %~1
 >>"%LOG_FILE%" echo %~1
+goto :eof
+
+:ensure_exe
+if exist "%SCRIPT_DIR%checker.exe" goto :eof
+call :log "[INFO] checker.exe not found; attempting to build it automatically..."
+
+where npm >nul 2>&1
+if errorlevel 1 (
+  call :log "[WARN] npm is not available; skipping exe build."
+  goto :eof
+)
+
+pushd "%SCRIPT_DIR%"
+if not exist node_modules (
+  call :log "[INFO] Installing npm dependencies (one-time)..."
+  npm install --no-audit --no-fund >nul 2>&1
+  if errorlevel 1 (
+    call :log "[WARN] npm install failed; cannot auto-build checker.exe."
+    popd
+    goto :eof
+  )
+)
+
+call :log "[INFO] Building checker.exe with pkg (node18 target)..."
+npx pkg checker.js --targets node18-win-x64 --output checker.exe >nul 2>&1
+if errorlevel 1 (
+  call :log "[WARN] pkg build failed; continuing without checker.exe."
+  popd
+  goto :eof
+)
+popd
+call :log "[INFO] checker.exe built successfully."
 goto :eof
 
 :ensure_node
