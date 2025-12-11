@@ -234,7 +234,10 @@ function checkMemory() {
 
 async function attemptFixes(results) {
   const missing = results.filter((r) => r.status !== 'ok');
-  if (missing.length === 0) return;
+  if (missing.length === 0) {
+    log('[INFO] All core items look good—no fixes needed.');
+    return;
+  }
   log('[INFO] Missing items detected: ' + missing.map((m) => m.label).join(', '));
   const consent = await promptYesNo('Fix issues and install missing tools automatically?', true);
   log(`[INFO] Auto-fix consent: ${consent ? 'yes' : 'no'}`);
@@ -295,13 +298,18 @@ async function main() {
   AUTO_YES = Boolean(args.autoYes);
   LOG_FILE = ensureLogFile(args.logPath);
   log('[INFO] Log will capture all output.');
-
-  const proceed = await promptYesNo('Start full checks now?', true);
-  log(`[INFO] User chose to ${proceed ? 'start' : 'cancel'} checks.`);
-  if (!proceed) {
-    log('❌ Checks were cancelled by user.');
-    await pauseForExit();
-    return;
+  if (AUTO_YES) {
+    log('[INFO] Hands-free mode: starting checks and silent fixes automatically.');
+  }
+  let proceed = true;
+  if (!AUTO_YES) {
+    proceed = await promptYesNo('Start full checks now?', true);
+    log(`[INFO] User chose to ${proceed ? 'start' : 'cancel'} checks.`);
+    if (!proceed) {
+      log('❌ Checks were cancelled by user.');
+      await pauseForExit();
+      return;
+    }
   }
 
   const checks = [checkOS, checkInternet, checkJava, checkDotNet, checkCompilers, checkDisk, checkMemory];
@@ -321,8 +329,12 @@ async function main() {
   results.forEach((r) => log('  ' + formatResult(r)));
   log('');
   await attemptFixes(results);
+  const statusLine = results.some((r) => r.status !== 'ok')
+    ? '⚠️ Some items need attention; see the log for install attempts.'
+    : '✅ All checks look good.';
+  log(statusLine);
   log(`Detailed log saved to: ${LOG_FILE}`);
-  await pauseForExit();
+  await pauseForExit('Press Enter to close this window...');
 }
 
 main().catch((err) => {

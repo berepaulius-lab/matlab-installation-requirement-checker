@@ -4,10 +4,16 @@ set "SCRIPT_DIR=%~dp0"
 set "LOG_DIR=%SCRIPT_DIR%logs"
 set "RUNTIME_DIR=%SCRIPT_DIR%runtime"
 set "SPIN_FLAG=%TEMP%\checker_spin.flag"
+set "BUILD_LOCK=%TEMP%\checker_build.lock"
 set "AUTO_FLAG=--auto"
 for /f %%b in ('"prompt $H & for %%b in (1) do rem"') do set "bs=%%b"
 
 if "%~1"==":spinner" goto spinner
+if "%~1"==":blocking_build" (
+  if "%~2" NEQ "" set "LOG_FILE=%~2"
+  if "%~3" NEQ "" set "BUILD_LOCK=%~3"
+  goto blocking_build
+)
 
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 if not exist "%RUNTIME_DIR%" mkdir "%RUNTIME_DIR%"
@@ -29,14 +35,15 @@ if not exist "%LOG_FILE%" (
 )
 call :log "[INFO] Starting log in: %LOG_FILE%"
 call :log "(Everything printed to the screen will also be copied here.)"
-
-rem Try to build a bundled exe automatically when it is missing
-call :ensure_exe
+call :log "[INFO] Quick setup: we'll prep an EXE in the background while running checks now."
 
 if exist "%SCRIPT_DIR%checker.exe" (
   call :log "[INFO] Running bundled checker.exe..."
   "%SCRIPT_DIR%checker.exe" --log-path "%LOG_FILE%" %AUTO_FLAG%
   goto :end
+) else (
+  call :log "[INFO] checker.exe not found; launching checks immediately and starting a background build for next time."
+  call :start_background_build
 )
 
 call :ensure_node
@@ -68,6 +75,27 @@ goto :eof
 if exist "%SPIN_FLAG%" del "%SPIN_FLAG%" >nul 2>&1
 echo.
 goto :eof
+
+:start_background_build
+  if not exist "%BUILD_LOCK%" (
+    >"%BUILD_LOCK%" echo on
+    start "" /b cmd /c "call ""%~f0"" :blocking_build \"%LOG_FILE%\" \"%BUILD_LOCK%\""
+    call :log "[INFO] Background builder started; we'll keep moving while it works."
+  ) else (
+    call :log "[INFO] Background builder already running; continuing with checks."
+  )
+goto :eof
+
+:blocking_build
+if "%~2"=="" set "LOG_FILE=%SCRIPT_DIR%logs\\build-worker.txt"
+set "SPIN_FLAG=%TEMP%\checker_spin_build.flag"
+if not exist "%LOG_FILE%" (
+  >"%LOG_FILE%" echo [INFO] Creating log file at %LOG_FILE%
+)
+call :log "[INFO] Background build worker: preparing checker.exe..."
+call :ensure_exe
+if defined BUILD_LOCK if exist "%BUILD_LOCK%" del "%BUILD_LOCK%" >nul 2>&1
+exit /b 0
 
 :ensure_exe
 if exist "%SCRIPT_DIR%checker.exe" goto :eof
@@ -157,14 +185,18 @@ set "NODE_URL=https://nodejs.org/dist/v%NODE_VERSION%/%NODE_ZIP%"
 set "NODE_ZIP_PATH=%RUNTIME_DIR%\%NODE_ZIP%"
 
 call :log "[INFO] Downloading portable Node %NODE_VERSION%..."
+call :start_spinner "Downloading portable Node..."
 curl -L "%NODE_URL%" -o "%NODE_ZIP_PATH%" >nul 2>&1
+call :stop_spinner
 if errorlevel 1 (
   call :log "[WARN] Download failed (curl exit %errorlevel%)."
   goto :eof
 )
 
 call :log "[INFO] Extracting portable Node..."
+call :start_spinner "Extracting portable Node..."
 tar -xf "%NODE_ZIP_PATH%" -C "%RUNTIME_DIR%" >nul 2>&1
+call :stop_spinner
 if errorlevel 1 (
   call :log "[WARN] Extraction failed (tar exit %errorlevel%)."
   goto :eof
