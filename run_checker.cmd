@@ -58,8 +58,10 @@ goto :eof
 if exist "%SPIN_FLAG%" del "%SPIN_FLAG%" >nul 2>&1
 >"%SPIN_FLAG%" echo on
 set "SPIN_MSG=%~1"
+if not defined SPIN_MSG set "SPIN_MSG=Working..."
 echo %SPIN_MSG%
-start "spinner" /b cmd /c "%~f0" :spinner "%SPIN_FLAG%"
+rem Quote the self-invocation so the :spinner label is respected and output stays in this window
+start "spinner" /b cmd /c ""%~f0" :spinner "%SPIN_FLAG%""
 goto :eof
 
 :stop_spinner
@@ -76,6 +78,12 @@ if errorlevel 1 (
   goto :eof
 )
 
+where npx >nul 2>&1
+if errorlevel 1 (
+  call :log "[WARN] npx is missing; skipping exe build."
+  goto :eof
+)
+
 pushd "%SCRIPT_DIR%"
 if not exist node_modules (
   call :log "[INFO] Installing npm dependencies (one-time)..."
@@ -88,7 +96,7 @@ if not exist node_modules (
 )
 
 call :log "[INFO] Building checker.exe with pkg (node18 target, up to 4 minutes)..."
-call :start_spinner "Building checker.exe..."
+call :start_spinner "Building checker.exe (this may take a few minutes)..."
 call :timed_pkg_build
 set "BUILD_EXIT=%errorlevel%"
 call :stop_spinner
@@ -96,6 +104,14 @@ if %BUILD_EXIT% NEQ 0 (
   call :log "[WARN] pkg build failed or timed out (exit %BUILD_EXIT%); continuing without checker.exe."
   popd
   goto :eof
+)
+if not exist "%SCRIPT_DIR%checker.exe" (
+  call :log "[WARN] Build reported success but checker.exe is missing; skipping exe run."
+  popd
+  goto :eof
+)
+for %%S in ("%SCRIPT_DIR%checker.exe") do if %%~zS LSS 10240 (
+  call :log "[WARN] checker.exe looks too small; keeping Node path as fallback."
 )
 popd
 call :log "[INFO] checker.exe built successfully."
@@ -161,7 +177,7 @@ if errorlevel 1 (
   npx pkg checker.js --targets node18-win-x64 --output checker.exe >nul 2>&1
   exit /b %errorlevel%
 )
-powershell -NoProfile -Command " $p = Start-Process -FilePath 'npx' -ArgumentList 'pkg','checker.js','--targets','node18-win-x64','--output','checker.exe' -PassThru -WorkingDirectory '%SCRIPT_DIR%'; if (-not $p.WaitForExit(240000)) { $p.Kill(); exit 408 } else { exit $p.ExitCode } "
+powershell -NoProfile -Command " $p = Start-Process -FilePath 'npx' -ArgumentList 'pkg','checker.js','--targets','node18-win-x64','--output','checker.exe' -PassThru -WorkingDirectory '%SCRIPT_DIR%'; $elapsed = 0; while (-not $p.HasExited -and $elapsed -lt 240000) { Start-Sleep -Milliseconds 1000; $elapsed += 1000; if (($elapsed % 15000) -eq 0) { Write-Host '[INFO] pkg build still running...' } } if (-not $p.HasExited) { $p.Kill(); Write-Host '[WARN] pkg build hit timeout (4 minutes).'; exit 408 } else { exit $p.ExitCode } "
 set "BUILD_EXIT=%errorlevel%"
 exit /b %BUILD_EXIT%
 
