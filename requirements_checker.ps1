@@ -1,3 +1,5 @@
+#requires -Version 5.1
+
 param(
     [switch]$ScanAll,
     [switch]$Quiet

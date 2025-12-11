@@ -1,20 +1,17 @@
-QUICK STEPS (Windows 11, no MATLAB required)
--------------------------------------------
+QUICK STEPS (Windows 11, no MATLAB needed)
+-----------------------------------------
 
-1) Pick your checker
-   - Double-click start_dashboard.cmd for the CSS-styled browser dashboard (it will verify Windows/PowerShell first), OR
-   - Double-click requirements_checker.cmd for the classic menu (now with bonus internet/disk/memory checks), OR
-   - Right-click either .ps1 and choose "Run with PowerShell"
+1) Launch it
+   - Double-click **start_dashboard.cmd** for the browser dashboard (checks for PowerShell first), OR
+   - Double-click **requirements_checker.cmd** for the menu version.
 
-2) Scan everything
-   - Dashboard: click "Scan all" (per-card buttons update instantly, and a Windows badge shows your edition/build)
-   - Menu: press A then Enter (or run the bonus checks individually via options 5-7)
-   - Missing items offer to open the official download page
+2) Run the checks
+   - Dashboard: hit **Scan all**. Cards for Windows, MATLAB, Java, .NET, compiler, internet, disk, and memory update live.
+   - Menu: press **A + Enter** to scan everything, or pick a number. If something is missing, choose **Y** to open the download page.
 
 3) Silent mode (optional)
-   - Open PowerShell in this folder
-   - Run: powershell -ExecutionPolicy Bypass -File requirements_checker.ps1 -ScanAll
+   powershell -ExecutionPolicy Bypass -File requirements_checker.ps1 -ScanAll
 
-4) Shareable zip (optional, from PowerShell)
-   - Run: ./package_windows_checker.ps1
-   - Send the generated requirements-checker-windows.zip
+4) Make a zip to share (optional)
+   ./package_windows_checker.ps1
+   This creates requirements-checker-windows.zip with both launchers and these instructions.

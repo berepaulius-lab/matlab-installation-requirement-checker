@@ -1,4 +1,5 @@
-<#
+#requires -Version 5.1
+<#+
 .SYNOPSIS
     Launches a local HTML dashboard with CSS-styled cards and buttons to run requirement checks.
 
@@ -84,7 +85,7 @@ function New-Listener {
         $listener.Start()
     } catch [System.Net.HttpListenerException] {
         if ($_.Exception.ErrorCode -eq 5) {
-            throw "Access denied reserving $prefix. Run an elevated PowerShell and execute: `netsh http add urlacl url=http://+:$Port/ user=Everyone`"
+            throw "Access denied reserving $prefix. Run PowerShell as Administrator, then run: netsh http add urlacl url=http://+:$Port/ user=Everyone"
         }
         if ($_.Exception.ErrorCode -eq 183) {
             throw "Port $Port already in use. Pick another with -Port."
@@ -293,6 +294,21 @@ $dashboardHtml = @"
         <div class="value">Waiting for scan…</div>
         <div class="pill">Not yet scanned</div>
       </div>
+      <div class="card" id="card-internet">
+        <header><div class="emoji">⏳</div><div class="title">Internet</div></header>
+        <div class="value">Waiting for scan…</div>
+        <div class="pill">Not yet scanned</div>
+      </div>
+      <div class="card" id="card-disk">
+        <header><div class="emoji">⏳</div><div class="title">Disk space</div></header>
+        <div class="value">Waiting for scan…</div>
+        <div class="pill">Not yet scanned</div>
+      </div>
+      <div class="card" id="card-memory">
+        <header><div class="emoji">⏳</div><div class="title">Memory</div></header>
+        <div class="value">Waiting for scan…</div>
+        <div class="pill">Not yet scanned</div>
+      </div>
     </div>
     <div class="footer">Buttons call the built-in PowerShell checks and update instantly. Ctrl+C in the console to close the server.</div>
   </div>
@@ -302,7 +318,10 @@ $dashboardHtml = @"
       matlab: 'MATLAB',
       java: 'Java JDK',
       dotnet: '.NET Runtime',
-      compiler: 'C/C++ Compiler'
+      compiler: 'C/C++ Compiler',
+      internet: 'Internet',
+      disk: 'System Disk',
+      memory: 'Memory'
     };
 
     function pillClass(emoji) {
@@ -364,7 +383,7 @@ $dashboardHtml = @"
 
     // Optional keyboard shortcuts
     document.addEventListener('keydown', (e) => {
-      const keyMap = { '1': 'matlab', '2': 'java', '3': 'dotnet', '4': 'compiler', 'a': 'all' };
+      const keyMap = { '1': 'matlab', '2': 'java', '3': 'dotnet', '4': 'compiler', '5': 'internet', '6': 'disk', '7': 'memory', 'a': 'all' };
       const key = keyMap[e.key.toLowerCase()];
       if (!key) return;
       if (key === 'all') { scanAll(); return; }
@@ -404,6 +423,9 @@ try {
                 'api/scan/java' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-JavaStatus)) }
                 'api/scan/dotnet' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-DotNetStatus)) }
                 'api/scan/compiler' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-CompilerStatus)) }
+                'api/scan/internet' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-InternetStatus)) }
+                'api/scan/disk' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-DiskStatus)) }
+                'api/scan/memory' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-MemoryStatus)) }
                 Default { Write-Response -Response $context.Response -Body 'Not found' -StatusCode 404 }
             }
         }
