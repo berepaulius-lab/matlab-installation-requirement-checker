@@ -85,7 +85,8 @@ function New-Listener {
         $listener.Start()
     } catch [System.Net.HttpListenerException] {
         if ($_.Exception.ErrorCode -eq 5) {
-            throw "Access denied reserving $prefix. Run PowerShell as Administrator, then run: netsh http add urlacl url=http://+:$Port/ user=Everyone"
+            $netsh = "netsh http add urlacl url=http://+:$Port/ user=Everyone"
+            throw "Access denied reserving $prefix. Run PowerShell as Administrator, then run: $netsh"
         }
         if ($_.Exception.ErrorCode -eq 183) {
             throw "Port $Port already in use. Pick another with -Port."

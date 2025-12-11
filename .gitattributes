@@ -1,0 +1,3 @@
+legacy-matlab/* linguist-vendored
+*.ps1 linguist-language=PowerShell
+*.cmd linguist-language=Batchfile

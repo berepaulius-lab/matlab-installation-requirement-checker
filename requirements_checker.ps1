@@ -44,14 +44,16 @@ function Get-WindowsStatus {
     $psv = $PSVersionTable.PSVersion
     $psOkay = $psv -ge $minPowershell
     $psNote = if ($psOkay) { "PowerShell $psv" } else { "PowerShell $psv (upgrade to $minPowershell or newer)" }
+    $value = "{0} (build {1}), {2} — {3}" -f $osCaption, $osBuild, $arch, $psNote
 
     return [PSCustomObject]@{
         Label = 'Windows'
         Emoji = if ($psOkay) { '🪟' } else { '⚠️' }
-        Value = ("$osCaption (build $osBuild), $arch — $psNote").Trim()
+        Value = $value.Trim()
         Color = if ($psOkay) { [ConsoleColor]::Cyan } else { [ConsoleColor]::Yellow }
         NeedsDownload = -not $psOkay
         DownloadUrl = 'https://aka.ms/powershell-release?tag=stable'
+        WingetId = 'Microsoft.PowerShell'
     }
 }
 
@@ -183,6 +185,7 @@ function Get-JavaStatus {
             Color = [ConsoleColor]::Red
             NeedsDownload = $true
             DownloadUrl = 'https://www.oracle.com/java/technologies/downloads/'
+            WingetId = 'Microsoft.OpenJDK.17'
         }
     }
 
@@ -215,6 +218,7 @@ function Get-JavaStatus {
         Color = $color
         NeedsDownload = $needsDownload
         DownloadUrl = 'https://www.oracle.com/java/technologies/downloads/'
+        WingetId = 'Microsoft.OpenJDK.17'
     }
 }
 
@@ -228,6 +232,7 @@ function Get-DotNetStatus {
             Color = [ConsoleColor]::Red
             NeedsDownload = $true
             DownloadUrl = 'https://dotnet.microsoft.com/en-us/download/dotnet'
+            WingetId = 'Microsoft.DotNet.Runtime.8'
         }
     }
 
@@ -239,6 +244,7 @@ function Get-DotNetStatus {
         Color = [ConsoleColor]::Green
         NeedsDownload = $false
         DownloadUrl = 'https://dotnet.microsoft.com/en-us/download/dotnet'
+        WingetId = 'Microsoft.DotNet.Runtime.8'
     }
 }
 
@@ -259,6 +265,7 @@ function Get-CompilerStatus {
             Color = [ConsoleColor]::Red
             NeedsDownload = $true
             DownloadUrl = 'https://visualstudio.microsoft.com/visual-cpp-build-tools/'
+            WingetId = 'Microsoft.VisualStudio.2022.BuildTools'
         }
     }
 
@@ -269,6 +276,24 @@ function Get-CompilerStatus {
         Color = [ConsoleColor]::Green
         NeedsDownload = $false
         DownloadUrl = 'https://visualstudio.microsoft.com/visual-cpp-build-tools/'
+        WingetId = 'Microsoft.VisualStudio.2022.BuildTools'
+    }
+}
+
+function Invoke-AutoInstall {
+    param([PSCustomObject]$Status)
+
+    $winget = Get-Command winget -ErrorAction SilentlyContinue
+    if (-not $winget) { return $false }
+    if (-not $Status.WingetId) { return $false }
+
+    Write-Host "Attempting silent install via winget for $($Status.Label)..." -ForegroundColor Cyan
+    try {
+        winget install --silent --accept-source-agreements --accept-package-agreements $Status.WingetId
+        return $true
+    } catch {
+        Write-Host "winget install failed. Opening the download page instead." -ForegroundColor Yellow
+        return $false
     }
 }
 
@@ -277,6 +302,14 @@ function Offer-Download {
 
     if (-not $Status.NeedsDownload) { return }
     if (-not $Status.DownloadUrl) { return }
+
+    $autoInstalled = $false
+    if (Invoke-AutoInstall -Status $Status) {
+        $autoInstalled = $true
+        Write-Host "winget finished. Re-run the check to confirm." -ForegroundColor Green
+    }
+
+    if ($autoInstalled) { return }
 
     $response = Read-Host "Open the official $($Status.Label) download page now? (Y/N, default Y)"
     if ([string]::IsNullOrWhiteSpace($response) -or $response.Trim().ToUpper() -eq 'Y') {

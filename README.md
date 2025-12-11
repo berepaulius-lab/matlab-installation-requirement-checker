@@ -1,16 +1,11 @@
 # Windows 11 Requirement Checker (no MATLAB needed)
 
-Emoji-ready helper that checks MATLAB-related prerequisites using only built-in Windows tools (PowerShell and Command Prompt). No MATLAB installation is required. You get both a CSS dashboard and a simple menu.
+Zero-MATLAB, zero-setup checker with emoji results. It uses only built-in Windows (PowerShell + CMD) and will try to auto-install missing pieces with **winget** when possible. Two entry points: a glossy CSS dashboard and a simple keyboard menu.
 
-## Quick start (easy mode)
-1) Double-click **start_dashboard.cmd**
-   - If PowerShell is missing, the launcher tells you where to get it.
-   - Your browser opens with clean cards for Windows, MATLAB, Java, .NET, compiler + bonus internet/disk/memory.
-   - Hit **Scan all**. Buttons update each card live.
-
-2) Prefer the menu? Double-click **requirements_checker.cmd**
-   - Press **A + Enter** to scan everything, or pick a number.
-   - If something is missing, the script offers to open the official download page for you.
+## If you only read one thing
+1) Double-click **start_dashboard.cmd** (opens your browser). Hit **Scan all**.
+2) Or double-click **requirements_checker.cmd** for the menu. Press **A + Enter**.
+3) When something is missing, the app first tries a silent winget install. If that’s not available, it offers to open the official download page.
 
 Silent terminal run (optional):
 
@@ -24,23 +19,24 @@ powershell -ExecutionPolicy Bypass -File requirements_checker.ps1 -ScanAll
    ```powershell
    ./package_windows_checker.ps1
    ```
-3. Share `requirements-checker-windows.zip`. It holds the two launchers plus this README and the short START_HERE guide.
+3. Share `requirements-checker-windows.zip`. It holds both launchers plus the short START_HERE guide.
 
 ## What the checks cover
+- Windows + PowerShell version badge (with upgrade link if outdated).
 - MATLAB presence on `PATH` (no MATLAB runtime required to run the checker).
-- Java JDK detection with smart version parsing and install links.
+- Java JDK detection with smart version parsing and install/winget links.
 - .NET runtime detection (needed for MATLAB Compiler SDK .NET assemblies).
-- Supported compiler detection (MSVC `cl`, `gcc`, or `clang`).
+- Supported compiler detection (MSVC `cl`, `gcc`, or `clang`) with winget auto-install for MSVC Build Tools.
 - Bonus health checks: internet reachability, C: drive free space, and available RAM.
 
-## Cleanup note (less clutter)
-- All legacy MATLAB build helpers now live in `legacy-matlab/` so it’s obvious they’re optional.
-- The only files you need to click on Windows are: `start_dashboard.cmd` / `requirements_dashboard.ps1` (HTML UI) and `requirements_checker.cmd` / `requirements_checker.ps1` (menu / silent scans).
+## Less clutter on disk
+- MATLAB build helpers live in `legacy-matlab/` so it’s obvious they’re optional.
+- The only Windows entry points: `start_dashboard.cmd` / `requirements_dashboard.ps1` (dashboard) and `requirements_checker.cmd` / `requirements_checker.ps1` (menu / silent scans).
 
 ## Troubleshooting (plain language)
-- See red text? Rerun as Administrator once, then try again.
-- If a card says it needs a download, pick **Yes** when the script offers to open the official site.
-- If the dashboard complains about the port, run `start_dashboard.cmd -Port 0` to auto-pick a free port. As a last resort, run once as Administrator and execute:
+- See red text? Rerun once as Administrator, then try again.
+- Dashboard won’t start? Run `start_dashboard.cmd -Port 0` to auto-pick a free port. As a last resort, run once as Administrator and execute:
   ```
   netsh http add urlacl url=http://+:5133/ user=Everyone
   ```
+- No winget? The scripts still open the official download pages so you can install manually.
