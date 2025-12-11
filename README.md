@@ -1,42 +1,33 @@
-# Windows 11 Requirement Checker (no MATLAB needed)
+# One-click Windows 11 Requirement Checker (no MATLAB needed)
 
-A single folder that works on a fresh Windows 11 box: double-click a CMD, see emojis, get automatic fixes (winget when available), and keep logs you can zip up and share.
+Drop this folder on a Windows 11 PC and double-click **run_checker.cmd**. The script instantly creates a fresh log file under `logs/`, checks your setup, offers to fix missing pieces with winget when available, and can launch the flashy web dashboard with one key.
 
-## Quick start (2 options)
-- **Pretty dashboard:** double-click `start_dashboard.cmd`, then click **Scan all**. Cards update live in your browser.
-- **Keyboard menu:** double-click `requirements_checker.cmd`, then press **A + Enter**. Extras include opening the log folder or saving a support bundle ZIP.
+## How to run it
+1) Double-click **run_checker.cmd** (or right-click → Run as Administrator if you expect permission prompts).  
+   - The menu appears with emojis. Press **A** then Enter to scan everything.  
+   - Press **D** to launch the web dashboard in your browser (served locally).  
+   - Press **L** to open the log folder or **B** to zip recent logs for support.
+2) Need a silent run? From PowerShell:  
+   `powershell -ExecutionPolicy Bypass -File requirements_checker.ps1 -ScanAll -LogPath .\logs`
 
-Optional silent run:
+## What it checks (and can auto-fix)
+- Windows edition/build/architecture and PowerShell version (links to upgrade if outdated).
+- winget readiness plus Windows Update service health (for smooth installs).
+- MATLAB on PATH (no MATLAB runtime required to run this app).
+- Java JDK, .NET runtime, and C/C++ compilers (`cl`, `gcc`, `clang`). Missing items attempt silent **winget** install first, then open the official download page.
+- Bonus health: internet reachability, C: drive space, and available RAM.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File requirements_checker.ps1 -ScanAll -LogPath .\logs
-```
+## Logs first, always
+- A `logs/` folder is created on launch, and a timestamped log starts **before** any checks run.
+- The dashboard and the menu share the same log folder and log file (passed from the launcher).
+- Use **L** in the menu to jump to the folder, or **B** to package recent logs into a ZIP for sharing.
 
-## What gets checked (and fixed)
-- Windows edition + build + PowerShell version, with a link to update PowerShell if needed.
-- Winget availability (so auto-installs can succeed) and Windows Update service health.
-- MATLAB on `PATH` (no MATLAB runtime required to run the checker itself).
-- Java JDK (version-parsed), .NET runtime, and C/C++ compilers (`cl`, `gcc`, `clang`). Missing pieces trigger silent **winget** installs when possible, then fall back to the official download page.
-- Bonus system health: internet reachability, C: drive free space, and available RAM.
-
-## Logs and support bundles
-- Every run writes a timestamped log under `logs/` (created automatically).
-- In the menu, press **L** to open the log folder or **B** to save a ZIP bundle of recent logs for easy sharing.
-- The dashboard reuses the same log folder so both entry points capture what happened.
-
-## Make a “download me” zip on Windows
+## Packaging a “download me” zip on Windows
 1. Open PowerShell in this folder.
 2. Run `./package_windows_checker.ps1`.
-3. Share `requirements-checker-windows.zip`. It includes both launchers, the docs, and a ready-made `logs` folder.
+3. Share the generated `requirements-checker-windows.zip` (it includes the launcher, script, docs, and an empty `logs` folder).
 
-## Less clutter on disk
-- MATLAB build helpers stay in `legacy-matlab/` and are ignored by default.
-- The only Windows entry points you need: `start_dashboard.cmd` / `requirements_dashboard.ps1` (dashboard) and `requirements_checker.cmd` / `requirements_checker.ps1` (menu / silent scans).
-
-## Troubleshooting (plain language)
-- Red text on startup? Rerun as Administrator once, then try again.
-- Dashboard won’t start? Run `start_dashboard.cmd -Port 0` to auto-pick a free port. If HTTP permissions block it, run once as Administrator and execute:
-  ```
-  netsh http add urlacl url=http://+:5133/ user=Everyone
-  ```
-- No winget? The scripts still offer the official download links so you can install manually.
+## Troubleshooting
+- **PowerShell missing?** The launcher tells you where to download it. Install, then rerun the launcher.
+- **Dashboard port busy?** Run `run_checker.cmd` and press **D**, or from PowerShell: `powershell -File requirements_checker.ps1 -Dashboard -Port 0` to auto-pick a free port.
+- **Winget blocked?** The script falls back to opening the official download pages so you can install manually.

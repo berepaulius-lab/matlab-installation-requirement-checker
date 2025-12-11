@@ -7,11 +7,8 @@ if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir -Forc
 
 $items = @(
     'requirements_checker.ps1',
-    'requirements_checker.cmd',
-    'requirements_dashboard.ps1',
-    'start_dashboard.cmd',
+    'run_checker.cmd',
     'README.md',
-    'START_HERE.txt',
     'logs'
 ) | Where-Object { Test-Path $_ }
 
