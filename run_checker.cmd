@@ -3,6 +3,10 @@ setlocal ENABLEDELAYEDEXPANSION
 set "SCRIPT_DIR=%~dp0"
 set "LOG_DIR=%SCRIPT_DIR%logs"
 set "RUNTIME_DIR=%SCRIPT_DIR%runtime"
+set "SPIN_FLAG=%TEMP%\checker_spin.flag"
+for /f %%b in ('"prompt $H & for %%b in (1) do rem"') do set "bs=%%b"
+
+if "%~1"==":spinner" goto spinner
 
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 if not exist "%RUNTIME_DIR%" mkdir "%RUNTIME_DIR%"
@@ -50,6 +54,18 @@ echo %~1
 >>"%LOG_FILE%" echo %~1
 goto :eof
 
+:start_spinner
+if exist "%SPIN_FLAG%" del "%SPIN_FLAG%" >nul 2>&1
+>"%SPIN_FLAG%" echo on
+set "SPIN_MSG=%~1"
+echo %SPIN_MSG%
+start "spinner" /b cmd /c "%~f0" :spinner "%SPIN_FLAG%"
+goto :eof
+
+:stop_spinner
+if exist "%SPIN_FLAG%" del "%SPIN_FLAG%" >nul 2>&1
+goto :eof
+
 :ensure_exe
 if exist "%SCRIPT_DIR%checker.exe" goto :eof
 call :log "[INFO] checker.exe not found; attempting to build it automatically..."
@@ -71,10 +87,13 @@ if not exist node_modules (
   )
 )
 
-call :log "[INFO] Building checker.exe with pkg (node18 target)..."
-npx pkg checker.js --targets node18-win-x64 --output checker.exe >nul 2>&1
-if errorlevel 1 (
-  call :log "[WARN] pkg build failed; continuing without checker.exe."
+call :log "[INFO] Building checker.exe with pkg (node18 target, up to 4 minutes)..."
+call :start_spinner "Building checker.exe..."
+call :timed_pkg_build
+set "BUILD_EXIT=%errorlevel%"
+call :stop_spinner
+if %BUILD_EXIT% NEQ 0 (
+  call :log "[WARN] pkg build failed or timed out (exit %BUILD_EXIT%); continuing without checker.exe."
   popd
   goto :eof
 )
@@ -134,6 +153,30 @@ if errorlevel 1 (
 del "%NODE_ZIP_PATH%" >nul 2>&1
 call :log "[INFO] Portable Node unpacked."
 goto :eof
+
+:timed_pkg_build
+where powershell >nul 2>&1
+if errorlevel 1 (
+  call :log "[WARN] PowerShell is missing; cannot enforce a timeout for pkg."
+  npx pkg checker.js --targets node18-win-x64 --output checker.exe >nul 2>&1
+  exit /b %errorlevel%
+)
+powershell -NoProfile -Command " $p = Start-Process -FilePath 'npx' -ArgumentList 'pkg','checker.js','--targets','node18-win-x64','--output','checker.exe' -PassThru -WorkingDirectory '%SCRIPT_DIR%'; if (-not $p.WaitForExit(240000)) { $p.Kill(); exit 408 } else { exit $p.ExitCode } "
+set "BUILD_EXIT=%errorlevel%"
+exit /b %BUILD_EXIT%
+
+:spinner
+setlocal ENABLEDELAYEDEXPANSION
+set "FLAG=%~1"
+set "CHARS=|/-\\"
+:spin_loop
+if not exist "%FLAG%" exit /b 0
+for %%c in (!CHARS!) do (
+  <nul set /p "=%%c%bs%"
+  ping -n 2 127.0.0.1 >nul
+  if not exist "%FLAG%" exit /b 0
+)
+goto spin_loop
 
 :batch_checks
 call :log "------------------------------------------------------------"

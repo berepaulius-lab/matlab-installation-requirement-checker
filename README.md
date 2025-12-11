@@ -1,13 +1,14 @@
 # Windows Requirement Checker (one-click, self-contained)
 
 Double-click **run_checker.cmd** (or **checker.exe** if you already built it). The launcher immediately creates a
-numbered log file in the local **logs** folder, then does the rest on its own: it builds **checker.exe** if possible,
-or grabs a portable Node runtime, or falls back to batch. When the checks finish, the window stays open until you press
-Enter so you always see the results and log path.
+numbered log file in the local **logs** folder, then does the rest on its own: it builds **checker.exe** if possible
+(with a visible spinner and a 4-minute timeout), or grabs a portable Node runtime, or falls back to batch. When the
+checks finish, the window stays open until you press Enter so you always see the results and log path.
 
 ## How it runs (no extra setup)
 1. Create `logs/log-###.txt` beside the launcher and mirror all console output there (first thing that happens).
-2. If **checker.exe** is present, run it. If not, the launcher auto-builds it with `npm`/`pkg` when available.
+2. If **checker.exe** is present, run it. If not, the launcher auto-builds it with `npm`/`pkg` when available, showing
+   a spinner so you know it’s working and timing out cleanly if it takes too long.
 3. If no exe exists, automatically download a portable Node.js runtime (saved under **runtime/**) with built-in
    `curl`/`tar` and run `checker.js` through it.
 4. If every runtime option fails, fall back to a minimal batch-only checker so you still get results in the same log
