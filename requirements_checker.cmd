@@ -1,6 +1,7 @@
 @echo off
 setlocal
 set "SCRIPT_DIR=%~dp0"
+set "LOG_DIR=%SCRIPT_DIR%logs"
 
 rem Ensure PowerShell exists on the machine
 where powershell.exe >nul 2>&1
@@ -12,5 +13,5 @@ if errorlevel 1 (
   exit /b 1
 )
 
-powershell -NoLogo -ExecutionPolicy Bypass -File "%SCRIPT_DIR%requirements_checker.ps1" %*
+powershell -NoLogo -ExecutionPolicy Bypass -File "%SCRIPT_DIR%requirements_checker.ps1" -LogPath "%LOG_DIR%" %*
 endlocal

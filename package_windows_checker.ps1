@@ -2,13 +2,17 @@ param(
     [string]$Output = 'requirements-checker-windows.zip'
 )
 
+$logDir = Join-Path $PSScriptRoot 'logs'
+if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir -Force | Out-Null }
+
 $items = @(
     'requirements_checker.ps1',
     'requirements_checker.cmd',
     'requirements_dashboard.ps1',
     'start_dashboard.cmd',
     'README.md',
-    'START_HERE.txt'
+    'START_HERE.txt',
+    'logs'
 ) | Where-Object { Test-Path $_ }
 
 if ($items.Count -eq 0) {

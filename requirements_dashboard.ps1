@@ -10,10 +10,18 @@
 #>
 
 param(
-    [int]$Port = 5133
+    [int]$Port = 5133,
+    [string]$LogPath,
+    [string]$LogFile
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Keep logs consistent with the CLI run
+$script:LogDirectory = if ($LogPath) { $LogPath } else { Join-Path $PSScriptRoot 'logs' }
+$script:LogFile = if ($LogFile) { $LogFile } else { Join-Path $script:LogDirectory "dashboard-$(Get-Date -Format 'yyyyMMdd-HHmmss').log" }
+if (-not (Test-Path $script:LogDirectory)) { New-Item -ItemType Directory -Path $script:LogDirectory -Force | Out-Null }
+if ($script:LogFile -and -not (Test-Path $script:LogFile)) { "[INFO] $(Get-Date -Format o) :: Dashboard session started" | Out-File -FilePath $script:LogFile -Encoding UTF8 -Force }
 
 # Reuse the core detection logic without triggering the CLI menu
 . "$PSScriptRoot/requirements_checker.ps1"
@@ -26,6 +34,8 @@ function Ensure-Environment {
     if ($PSVersionTable.PSVersion -lt $minPowershell) {
         throw "PowerShell $minPowershell or newer is required. Current: $($PSVersionTable.PSVersion)."
     }
+
+    Write-Log -Message "Environment check passed for dashboard: PS $($PSVersionTable.PSVersion), Port $Port"
 }
 
 function Write-Response {
@@ -42,6 +52,9 @@ function Write-Response {
     $Response.ContentLength64 = $buffer.Length
     $Response.OutputStream.Write($buffer, 0, $buffer.Length)
     $Response.Close()
+
+    $level = if ($StatusCode -ge 400) { 'WARN' } else { 'INFO' }
+    Write-Log -Message "Served $ContentType ($StatusCode)" -Level $level
 }
 
 function Send-Json {
@@ -61,6 +74,14 @@ function Get-StatusPayload {
 
 function Get-AllPayloads {
     return (Get-AllStatuses | ForEach-Object { Get-StatusPayload $_ })
+}
+
+function Log-Request {
+    param(
+        [string]$Path,
+        [int]$Status = 200
+    )
+    Write-Log -Message "HTTP $Status for $Path"
 }
 
 function New-Listener {
@@ -310,6 +331,16 @@ $dashboardHtml = @"
         <div class="value">Waiting for scan…</div>
         <div class="pill">Not yet scanned</div>
       </div>
+      <div class="card" id="card-winget">
+        <header><div class="emoji">⏳</div><div class="title">winget</div></header>
+        <div class="value">Waiting for scan…</div>
+        <div class="pill">Not yet scanned</div>
+      </div>
+      <div class="card" id="card-update">
+        <header><div class="emoji">⏳</div><div class="title">Windows Update</div></header>
+        <div class="value">Waiting for scan…</div>
+        <div class="pill">Not yet scanned</div>
+      </div>
     </div>
     <div class="footer">Buttons call the built-in PowerShell checks and update instantly. Ctrl+C in the console to close the server.</div>
   </div>
@@ -322,7 +353,9 @@ $dashboardHtml = @"
       compiler: 'C/C++ Compiler',
       internet: 'Internet',
       disk: 'System Disk',
-      memory: 'Memory'
+      memory: 'Memory',
+      winget: 'winget',
+      update: 'Windows Update'
     };
 
     function pillClass(emoji) {
@@ -384,7 +417,7 @@ $dashboardHtml = @"
 
     // Optional keyboard shortcuts
     document.addEventListener('keydown', (e) => {
-      const keyMap = { '1': 'matlab', '2': 'java', '3': 'dotnet', '4': 'compiler', '5': 'internet', '6': 'disk', '7': 'memory', 'a': 'all' };
+      const keyMap = { '1': 'matlab', '2': 'java', '3': 'dotnet', '4': 'compiler', '5': 'internet', '6': 'disk', '7': 'memory', '8': 'winget', '9': 'update', 'a': 'all' };
       const key = keyMap[e.key.toLowerCase()];
       if (!key) return;
       if (key === 'all') { scanAll(); return; }
@@ -404,6 +437,7 @@ try {
 
     Write-Host "Serving the CSS dashboard at http://localhost:$Port/" -ForegroundColor Cyan
     Write-Host "Press Ctrl+C to stop." -ForegroundColor DarkGray
+    Write-Log -Message "Dashboard listening on http://localhost:$Port/"
 
     try {
         Start-Process "http://localhost:$Port/" | Out-Null
@@ -417,17 +451,19 @@ try {
             $path = $context.Request.Url.AbsolutePath.Trim('/').ToLower()
 
             switch ($path) {
-                '' { Write-Response -Response $context.Response -Body $dashboardHtml -ContentType 'text/html; charset=utf-8' }
-                'api/scan/all' { Send-Json -Response $context.Response -Data @{ items = Get-AllPayloads } }
-                'api/scan/windows' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-WindowsStatus)) }
-                'api/scan/matlab' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-MatlabStatus)) }
-                'api/scan/java' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-JavaStatus)) }
-                'api/scan/dotnet' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-DotNetStatus)) }
-                'api/scan/compiler' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-CompilerStatus)) }
-                'api/scan/internet' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-InternetStatus)) }
-                'api/scan/disk' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-DiskStatus)) }
-                'api/scan/memory' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-MemoryStatus)) }
-                Default { Write-Response -Response $context.Response -Body 'Not found' -StatusCode 404 }
+                '' { Write-Response -Response $context.Response -Body $dashboardHtml -ContentType 'text/html; charset=utf-8'; Log-Request -Path '/' }
+                'api/scan/all' { Send-Json -Response $context.Response -Data @{ items = Get-AllPayloads }; Log-Request -Path $path }
+                'api/scan/windows' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-WindowsStatus)); Log-Request -Path $path }
+                'api/scan/matlab' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-MatlabStatus)); Log-Request -Path $path }
+                'api/scan/java' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-JavaStatus)); Log-Request -Path $path }
+                'api/scan/dotnet' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-DotNetStatus)); Log-Request -Path $path }
+                'api/scan/compiler' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-CompilerStatus)); Log-Request -Path $path }
+                'api/scan/internet' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-InternetStatus)); Log-Request -Path $path }
+                'api/scan/disk' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-DiskStatus)); Log-Request -Path $path }
+                'api/scan/memory' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-MemoryStatus)); Log-Request -Path $path }
+                'api/scan/winget' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-WingetStatus)); Log-Request -Path $path }
+                'api/scan/update' { Send-Json -Response $context.Response -Data (Get-StatusPayload (Get-WindowsUpdateStatus)); Log-Request -Path $path }
+                Default { Write-Response -Response $context.Response -Body 'Not found' -StatusCode 404; Log-Request -Path $path -Status 404 }
             }
         }
     }
@@ -438,6 +474,7 @@ try {
 }
 catch {
     Write-Host "❌ $($_.Exception.Message)" -ForegroundColor Red
+    Write-Log -Message "Dashboard failed: $($_.Exception.Message)" -Level 'ERROR'
     if ($listener -and $listener.IsListening) { $listener.Stop(); $listener.Close() }
     exit 1
 }

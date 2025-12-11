@@ -2,13 +2,16 @@ START HERE (Windows 11, no MATLAB needed)
 -----------------------------------------
 
 1) Double-click **start_dashboard.cmd**
-   - Browser opens. Hit **Scan all**.
+   - Click **Scan all**. Close the browser when you’re done.
 
    Prefer text only? Double-click **requirements_checker.cmd**, press **A + Enter**.
 
 2) Let it fix things
-   - Missing stuff? The app tries a silent **winget** install first.
+   - Missing stuff? The app first tries a silent **winget** install.
    - If winget isn’t there, it offers the official download page.
 
-3) Share it
-   - In PowerShell, run `./package_windows_checker.ps1` to create a zip with both launchers + this file.
+3) Need help?
+   - In the menu, press **L** to open the log folder or **B** to save a support ZIP you can share.
+
+4) Share it
+   - In PowerShell, run `./package_windows_checker.ps1` to build `requirements-checker-windows.zip`.
