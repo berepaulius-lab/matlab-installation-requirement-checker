@@ -4,16 +4,10 @@ set "SCRIPT_DIR=%~dp0"
 set "LOG_DIR=%SCRIPT_DIR%logs"
 set "RUNTIME_DIR=%SCRIPT_DIR%runtime"
 set "SPIN_FLAG=%TEMP%\checker_spin.flag"
-set "BUILD_LOCK=%TEMP%\checker_build.lock"
 set "AUTO_FLAG=--auto"
 for /f %%b in ('"prompt $H & for %%b in (1) do rem"') do set "bs=%%b"
 
 if "%~1"==":spinner" goto spinner
-if "%~1"==":blocking_build" (
-  if "%~2" NEQ "" set "LOG_FILE=%~2"
-  if "%~3" NEQ "" set "BUILD_LOCK=%~3"
-  goto blocking_build
-)
 
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 if not exist "%RUNTIME_DIR%" mkdir "%RUNTIME_DIR%"
@@ -35,17 +29,16 @@ if not exist "%LOG_FILE%" (
 )
 call :log "[INFO] Starting log in: %LOG_FILE%"
 call :log "(Everything printed to the screen will also be copied here.)"
-call :log "[INFO] Quick setup: we'll prep an EXE in the background while running checks now."
+call :log "[INFO] Quick setup: we'll build and run the EXE automatically."
 
+call :ensure_exe_blocking
 if exist "%SCRIPT_DIR%checker.exe" (
-  call :log "[INFO] Running bundled checker.exe..."
+  call :log "[INFO] Running checker.exe..."
   "%SCRIPT_DIR%checker.exe" --log-path "%LOG_FILE%" %AUTO_FLAG%
   goto :end
-) else (
-  call :log "[INFO] checker.exe not found; launching checks immediately and starting a background build for next time."
-  call :start_background_build
 )
 
+call :log "[INFO] checker.exe is unavailable; using Node path."
 call :ensure_node
 if defined NODE_CMD (
   call :log "[INFO] Using Node runtime: %NODE_CMD%"
@@ -76,39 +69,36 @@ if exist "%SPIN_FLAG%" del "%SPIN_FLAG%" >nul 2>&1
 echo.
 goto :eof
 
-:start_background_build
-  if not exist "%BUILD_LOCK%" (
-    >"%BUILD_LOCK%" echo on
-    start "" /b cmd /c "call ""%~f0"" :blocking_build \"%LOG_FILE%\" \"%BUILD_LOCK%\""
-    call :log "[INFO] Background builder started; we'll keep moving while it works."
-  ) else (
-    call :log "[INFO] Background builder already running; continuing with checks."
-  )
-goto :eof
-
-:blocking_build
-if "%~2"=="" set "LOG_FILE=%SCRIPT_DIR%logs\\build-worker.txt"
-set "SPIN_FLAG=%TEMP%\checker_spin_build.flag"
-if not exist "%LOG_FILE%" (
-  >"%LOG_FILE%" echo [INFO] Creating log file at %LOG_FILE%
-)
-call :log "[INFO] Background build worker: preparing checker.exe..."
-call :ensure_exe
-if defined BUILD_LOCK if exist "%BUILD_LOCK%" del "%BUILD_LOCK%" >nul 2>&1
-exit /b 0
-
-:ensure_exe
+:
+rem Build checker.exe up front so users get the full EXE experience before any fallbacks.
+:ensure_exe_blocking
 if exist "%SCRIPT_DIR%checker.exe" goto :eof
 call :log "[INFO] checker.exe not found; attempting to build it automatically..."
 
-where npm >nul 2>&1
-if errorlevel 1 (
+set "NPM_CMD="
+set "NPX_CMD="
+
+for /f "delims=" %%P in ('where npm 2^>nul') do if not defined NPM_CMD set "NPM_CMD=%%P"
+for /f "delims=" %%P in ('where npx 2^>nul') do if not defined NPX_CMD set "NPX_CMD=%%P"
+
+if not defined NPM_CMD (
+  call :log "[INFO] npm not found; downloading a portable Node runtime so we can build the exe."
+  call :download_node
+  call :find_portable_node
+  if defined NODE_CMD (
+    for %%B in ("%NODE_CMD%") do set "NODE_BIN=%%~dpB"
+    if exist "!NODE_BIN!npm.cmd" set "NPM_CMD=!NODE_BIN!npm.cmd"
+    if exist "!NODE_BIN!npx.cmd" set "NPX_CMD=!NODE_BIN!npx.cmd"
+    if defined NPM_CMD call :log "[INFO] Using portable npm at !NPM_CMD! for the build."
+  )
+)
+
+if not defined NPM_CMD (
   call :log "[WARN] npm is not available; skipping exe build."
   goto :eof
 )
 
-where npx >nul 2>&1
-if errorlevel 1 (
+if not defined NPX_CMD (
   call :log "[WARN] npx is missing; skipping exe build."
   goto :eof
 )
@@ -117,7 +107,7 @@ pushd "%SCRIPT_DIR%"
 if not exist node_modules (
   call :log "[INFO] Installing npm dependencies (one-time)..."
   call :start_spinner "Installing npm dependencies..."
-  npm install --no-audit --no-fund >nul 2>&1
+  "%NPM_CMD%" install --no-audit --no-fund >nul 2>&1
   call :stop_spinner
   if errorlevel 1 (
     call :log "[WARN] npm install failed; cannot auto-build checker.exe."
@@ -127,7 +117,7 @@ if not exist node_modules (
 )
 
 call :log "[INFO] Building checker.exe with pkg (node18 target, up to 4 minutes)..."
-call :start_spinner "Building checker.exe (this may take a few minutes)..."
+call :start_spinner "Building checker.exe (please wait)..."
 call :timed_pkg_build
 set "BUILD_EXIT=%errorlevel%"
 call :stop_spinner
@@ -206,13 +196,15 @@ call :log "[INFO] Portable Node unpacked."
 goto :eof
 
 :timed_pkg_build
+set "PKG_BIN=%NPX_CMD%"
+if not defined PKG_BIN set "PKG_BIN=npx"
 where powershell >nul 2>&1
 if errorlevel 1 (
   call :log "[WARN] PowerShell is missing; cannot enforce a timeout for pkg."
-  npx pkg checker.js --targets node18-win-x64 --output checker.exe >nul 2>&1
+  "%PKG_BIN%" pkg checker.js --targets node18-win-x64 --output checker.exe >nul 2>&1
   exit /b %errorlevel%
 )
-powershell -NoProfile -Command " $p = Start-Process -FilePath 'npx' -ArgumentList 'pkg','checker.js','--targets','node18-win-x64','--output','checker.exe' -PassThru -WorkingDirectory '%SCRIPT_DIR%'; $elapsed = 0; while (-not $p.HasExited -and $elapsed -lt 240000) { Start-Sleep -Milliseconds 1000; $elapsed += 1000; if (($elapsed % 15000) -eq 0) { Write-Host '[INFO] pkg build still running...' } } if (-not $p.HasExited) { $p.Kill(); Write-Host '[WARN] pkg build hit timeout (4 minutes).'; exit 408 } else { exit $p.ExitCode } "
+powershell -NoProfile -Command " $tool = '%PKG_BIN%'; $args = @('pkg','checker.js','--targets','node18-win-x64','--output','checker.exe'); $p = Start-Process -FilePath $tool -ArgumentList $args -PassThru -WorkingDirectory '%SCRIPT_DIR%'; $elapsed = 0; while (-not $p.HasExited -and $elapsed -lt 240000) { Start-Sleep -Milliseconds 1000; $elapsed += 1000; if (($elapsed % 15000) -eq 0) { Write-Host '[INFO] pkg build still running...' } } if (-not $p.HasExited) { $p.Kill(); Write-Host '[WARN] pkg build hit timeout (4 minutes).'; exit 408 } else { exit $p.ExitCode } "
 set "BUILD_EXIT=%errorlevel%"
 exit /b %BUILD_EXIT%
 
